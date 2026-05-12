@@ -6,19 +6,52 @@ import plotly.graph_objects as go
 from openai import OpenAI
 import re
 import datetime
+import base64  # <--- 新增的库，用于处理图片
 
 # ================= 1. 页面与学术状态配置 =================
 st.set_page_config(page_title="TDM & GDPR Compliance Auditor", page_icon="⚖️", layout="wide")
 
-# 隐藏 Streamlit 原生元素
-st.markdown("""
-    <style>
-    #MainMenu {visibility: hidden;}
-    header {visibility: hidden;}
-    .stDeployButton {display: none;}
-    footer {visibility: hidden;}
-    </style>
-    """, unsafe_allow_html=True)
+# 将原有的隐藏 CSS 和 新的背景图 CSS 合并成一个函数
+def set_page_bg_and_hide_elements(image_file):
+    try:
+        with open(image_file, "rb") as f:
+            encoded_string = base64.b64encode(f.read()).decode()
+        
+        css = f"""
+        <style>
+        /* 1. 隐藏 Streamlit 原生元素 */
+        #MainMenu {{visibility: hidden;}}
+        header {{visibility: hidden;}}
+        .stDeployButton {{display: none;}}
+        footer {{visibility: hidden;}}
+        
+        /* 2. 设置全屏大背景图 */
+        .stApp {{
+            background-image: url(data:image/jpeg;base64,{encoded_string});
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }}
+        
+        /* 3. 核心阅读区半透明深色遮罩 (保障学术报告的可读性) */
+        .block-container {{
+            background-color: rgba(14, 17, 23, 0.85); /* 85%不透明度的深色 */
+            border-radius: 15px; /* 圆角边框 */
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5); /* 阴影立体感 */
+        }}
+        </style>
+        """
+        st.markdown(css, unsafe_allow_html=True)
+    except FileNotFoundError:
+        # 如果还没上传图片，只隐藏原生UI，不报错
+        st.markdown("""
+        <style>#MainMenu {visibility: hidden;} header {visibility: hidden;} .stDeployButton {display: none;} footer {visibility: hidden;}</style>
+        """, unsafe_allow_html=True)
+
+# 调用函数，加载我们传到 github 的 bg.jpg
+set_page_bg_and_hide_elements("bg.jpg")
 
 if 'scan_result' not in st.session_state:
     st.session_state['scan_result'] = None
