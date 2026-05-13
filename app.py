@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 from openai import OpenAI
 import re
 import datetime
-import base64  # <--- 新增的库，用于处理图片
+import base64
 
 # ================= 1. 页面与学术状态配置 =================
 st.set_page_config(page_title="TDM & GDPR Compliance Auditor", page_icon="⚖️", layout="wide")
@@ -41,7 +41,7 @@ def set_page_bg_and_hide_elements(image_file):
             background-image: url(data:image/jpeg;base64,{encoded_string});
             background-size: cover;
             background-position: center;
-            opacity: 0.25; /* 推荐设置 0.25 的透明度，不会喧宾夺主 */
+            opacity: 0.25; /* 推荐设置 0.25 的透明度 */
             z-index: -1;
             pointer-events: none;
         }}
@@ -63,7 +63,19 @@ def set_page_bg_and_hide_elements(image_file):
         st.markdown("""
         <style>#MainMenu {visibility: hidden;} header {visibility: hidden;} .stDeployButton {display: none;} footer {visibility: hidden;}</style>
         """, unsafe_allow_html=True)
-        
+
+# 调用函数，加载我们传到 github 的 bg.jpg
+set_page_bg_and_hide_elements("bg.jpg")
+
+# ================= 🚨 刚刚不小心丢失的就是下面这三行 🚨 =================
+if 'scan_result' not in st.session_state:
+    st.session_state['scan_result'] = None
+if 'history' not in st.session_state:
+    st.session_state['history'] = []
+if 'ai_memo' not in st.session_state:
+    st.session_state['ai_memo'] = None
+
+# (这里下方应该是你的 # ================= 2. 国际化与专注法域词库 ================= )      
 # ================= 2. 国际化与专注法域词库 =================
 ui_texts = {
     "English": {
