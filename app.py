@@ -12,6 +12,7 @@ import base64  # <--- 新增的库，用于处理图片
 st.set_page_config(page_title="TDM & GDPR Compliance Auditor", page_icon="⚖️", layout="wide")
 
 # 将原有的隐藏 CSS 和 新的背景图 CSS 合并成一个函数
+# 将原有的隐藏 CSS 和 新的背景图 CSS 合并成一个函数
 def set_page_bg_and_hide_elements(image_file):
     try:
         with open(image_file, "rb") as f:
@@ -25,21 +26,31 @@ def set_page_bg_and_hide_elements(image_file):
         .stDeployButton {{display: none;}}
         footer {{visibility: hidden;}}
         
-        /* 2. 设置全屏大背景图 */
-        .stApp {{
+        /* 2. 设置自适应明暗的底层纹理图 */
+        .stApp::before {{
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
             background-image: url(data:image/jpeg;base64,{encoded_string});
             background-size: cover;
             background-position: center;
-            background-attachment: fixed;
+            opacity: 0.15; /* 透明度降到15%，只保留法理元素的轮廓 */
+            z-index: -1;   /* 放到最底层 */
+            pointer-events: none; /* 防止阻挡鼠标点击 */
         }}
         
-        /* 3. 核心阅读区半透明深色遮罩 (保障学术报告的可读性) */
+        /* 3. 核心阅读区：自动跟随用户的 Light/Dark 模式 */
         .block-container {{
-            background-color: rgba(14, 17, 23, 0.85); /* 85%不透明度的深色 */
-            border-radius: 15px; /* 圆角边框 */
+            background-color: var(--background-color); /* 神奇变量：自动切换纯白或深灰底色 */
+            border: 1px solid var(--secondary-background-color); /* 细微的边框增加立体感 */
+            border-radius: 15px; 
             padding-top: 2rem;
             padding-bottom: 2rem;
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5); /* 阴影立体感 */
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08); /* 柔和的阴影 */
+            z-index: 1;
         }}
         </style>
         """
