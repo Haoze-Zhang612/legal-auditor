@@ -10,7 +10,6 @@ import base64
 
 # ================= 1. 页面与学术状态配置 =================
 st.set_page_config(page_title="TDM & GDPR Compliance Auditor", page_icon="⚖️", layout="wide")
-
 # 将原有的隐藏 CSS 和 新的背景图 CSS 合并成一个函数
 def set_page_bg_and_hide_elements(image_file):
     try:
@@ -25,7 +24,7 @@ def set_page_bg_and_hide_elements(image_file):
         .stDeployButton {{display: none;}}
         footer {{visibility: hidden;}}
         
-        /* 2. 核心修复：把 Streamlit 默认的实心背景变透明，让底层露出来 */
+        /* 2. 背景变透明 */
         .stApp {{
             background-color: transparent !important;
         }}
@@ -41,19 +40,36 @@ def set_page_bg_and_hide_elements(image_file):
             background-image: url(data:image/jpeg;base64,{encoded_string});
             background-size: cover;
             background-position: center;
-            opacity: 0.25; /* 推荐设置 0.25 的透明度 */
+            opacity: 0.25; 
             z-index: -1;
             pointer-events: none;
         }}
         
-        /* 4. 核心阅读区：保留一定的底色，确保审计报告文字清晰可见 */
+        /* 4. 💻 桌面端核心阅读区样式 */
         .block-container {{
             background-color: var(--background-color); 
             border-radius: 15px; 
-            padding-top: 2rem;
-            padding-bottom: 2rem;
+            padding: 3rem 4rem; /* 桌面端左右多留白，更显高级 */
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); 
             z-index: 1;
+            max-width: 1000px; /* 防止在大显示器上被拉得过宽，影响阅读体验 */
+        }}
+
+        /* 5. 📱 手机与平板适配 (当屏幕宽度小于 768px 时自动接管) */
+        @media (max-width: 768px) {{
+            .block-container {{
+                padding: 1.5rem 1rem !important; /* 大幅缩小手机端留白，把空间还给文字 */
+                border-radius: 8px !important; 
+            }}
+            /* 自动缩小手机端的大标题，防止挤满屏幕 */
+            h1 {{
+                font-size: 1.8rem !important;
+                text-align: center;
+            }}
+            /* 修复下拉菜单和输入框在手机上的宽度 */
+            div[data-baseweb="select"], div[data-baseweb="input"] {{
+                font-size: 0.9rem !important;
+            }}
         }}
         </style>
         """
@@ -63,19 +79,7 @@ def set_page_bg_and_hide_elements(image_file):
         st.markdown("""
         <style>#MainMenu {visibility: hidden;} header {visibility: hidden;} .stDeployButton {display: none;} footer {visibility: hidden;}</style>
         """, unsafe_allow_html=True)
-
-# 调用函数，加载我们传到 github 的 bg.jpg
-set_page_bg_and_hide_elements("bg.jpg")
-
-# ================= 🚨 刚刚不小心丢失的就是下面这三行 🚨 =================
-if 'scan_result' not in st.session_state:
-    st.session_state['scan_result'] = None
-if 'history' not in st.session_state:
-    st.session_state['history'] = []
-if 'ai_memo' not in st.session_state:
-    st.session_state['ai_memo'] = None
-
-# (这里下方应该是你的 # ================= 2. 国际化与专注法域词库 ================= )      
+             
 # ================= 2. 国际化与专注法域词库 =================
 ui_texts = {
     "English": {
