@@ -25,7 +25,12 @@ def set_page_bg_and_hide_elements(image_file):
         .stDeployButton {{display: none;}}
         footer {{visibility: hidden;}}
         
-        /* 2. 设置自适应明暗的底层纹理图 */
+        /* 2. 核心修复：把 Streamlit 默认的实心背景变透明，让底层露出来 */
+        .stApp {{
+            background-color: transparent !important;
+        }}
+        
+        /* 3. 设置带透明度的背景暗纹图 */
         .stApp::before {{
             content: "";
             position: fixed;
@@ -36,41 +41,29 @@ def set_page_bg_and_hide_elements(image_file):
             background-image: url(data:image/jpeg;base64,{encoded_string});
             background-size: cover;
             background-position: center;
-            opacity: 0.4; /* 透明度降到40%，保留法理元素的轮廓 */
-            z-index: -1;   /* 放到最底层 */
-            pointer-events: none; /* 防止阻挡鼠标点击 */
+            opacity: 0.25; /* 推荐设置 0.25 的透明度，不会喧宾夺主 */
+            z-index: -1;
+            pointer-events: none;
         }}
         
-        /* 3. 核心阅读区：自动跟随用户的 Light/Dark 模式 */
+        /* 4. 核心阅读区：保留一定的底色，确保审计报告文字清晰可见 */
         .block-container {{
-            background-color: var(--background-color); /* 神奇变量：自动切换纯白或深灰底色 */
-            border: 1px solid var(--secondary-background-color); /* 细微的边框增加立体感 */
+            background-color: var(--background-color); 
             border-radius: 15px; 
             padding-top: 2rem;
             padding-bottom: 2rem;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08); /* 柔和的阴影 */
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); 
             z-index: 1;
         }}
         </style>
         """
         st.markdown(css, unsafe_allow_html=True)
     except FileNotFoundError:
-        # 【关键修改】：如果找不到图片，直接在网页顶端亮红灯报错！
         st.error(f"🚨 严重错误：找不到背景图片 '{image_file}'。请确保已将图片上传至 GitHub 仓库，且命名为 bg.jpg（全小写）。")
         st.markdown("""
         <style>#MainMenu {visibility: hidden;} header {visibility: hidden;} .stDeployButton {display: none;} footer {visibility: hidden;}</style>
         """, unsafe_allow_html=True)
-
-# 调用函数，加载我们传到 github 的 bg.jpg
-set_page_bg_and_hide_elements("bg.jpg")
-
-if 'scan_result' not in st.session_state:
-    st.session_state['scan_result'] = None
-if 'history' not in st.session_state:
-    st.session_state['history'] = []
-if 'ai_memo' not in st.session_state:
-    st.session_state['ai_memo'] = None
-    
+        
 # ================= 2. 国际化与专注法域词库 =================
 ui_texts = {
     "English": {
