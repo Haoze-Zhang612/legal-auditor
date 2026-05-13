@@ -37,7 +37,7 @@ def set_page_bg_and_hide_elements(image_file):
             background-image: url(data:image/jpeg;base64,{encoded_string});
             background-size: cover;
             background-position: center;
-            opacity: 0.15; /* 透明度降到15%，只保留法理元素的轮廓 */
+            opacity: 0.4; /* 透明度降到15%，只保留法理元素的轮廓 */
             z-index: -1;   /* 放到最底层 */
             pointer-events: none; /* 防止阻挡鼠标点击 */
         }}
