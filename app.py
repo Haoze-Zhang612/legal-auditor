@@ -17,6 +17,10 @@ def set_page_bg_and_hide_elements(image_file):
             encoded_string = base64.b64encode(f.read()).decode()
         
         css = f"""
+        /* 6. 强制语言选择器的标题单行显示（不换行） */
+        div[data-testid="stSelectbox"] label p {
+            white-space: nowrap !important;
+        }
         <style>
         /* 1. 隐藏 Streamlit 原生元素 */
         #MainMenu {{visibility: hidden;}}
