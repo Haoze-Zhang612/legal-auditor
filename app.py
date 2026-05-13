@@ -10,6 +10,7 @@ import base64
 
 # ================= 1. 页面与学术状态配置 =================
 st.set_page_config(page_title="TDM & GDPR Compliance Auditor", page_icon="⚖️", layout="wide")
+
 # 将原有的隐藏 CSS 和 新的背景图 CSS 合并成一个函数
 def set_page_bg_and_hide_elements(image_file):
     try:
@@ -17,10 +18,6 @@ def set_page_bg_and_hide_elements(image_file):
             encoded_string = base64.b64encode(f.read()).decode()
         
         css = f"""
-        /* 6. 强制语言选择器的标题单行显示（不换行） */
-        div[data-testid="stSelectbox"] label p {
-            white-space: nowrap !important;
-        }
         <style>
         /* 1. 隐藏 Streamlit 原生元素 */
         #MainMenu {{visibility: hidden;}}
@@ -75,6 +72,11 @@ def set_page_bg_and_hide_elements(image_file):
                 font-size: 0.9rem !important;
             }}
         }}
+
+        /* 6. 强制语言选择器的标题单行显示（不换行） */
+        div[data-testid="stSelectbox"] label p {{
+            white-space: nowrap !important;
+        }}
         </style>
         """
         st.markdown(css, unsafe_allow_html=True)
@@ -95,7 +97,7 @@ if 'history' not in st.session_state:
 if 'ai_memo' not in st.session_state:
     st.session_state['ai_memo'] = None
 
-# (这里下方应该是你的 # ================= 2. 国际化与专注法域词库 ================= )     
+# (这里下方应该是你的 # ================= 2. 国际化与专注法域词库 ================= )
 # ================= 2. 国际化与专注法域词库 =================
 ui_texts = {
     "English": {
