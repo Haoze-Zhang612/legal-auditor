@@ -12,7 +12,6 @@ import base64  # <--- 新增的库，用于处理图片
 st.set_page_config(page_title="TDM & GDPR Compliance Auditor", page_icon="⚖️", layout="wide")
 
 # 将原有的隐藏 CSS 和 新的背景图 CSS 合并成一个函数
-# 将原有的隐藏 CSS 和 新的背景图 CSS 合并成一个函数
 def set_page_bg_and_hide_elements(image_file):
     try:
         with open(image_file, "rb") as f:
@@ -37,7 +36,7 @@ def set_page_bg_and_hide_elements(image_file):
             background-image: url(data:image/jpeg;base64,{encoded_string});
             background-size: cover;
             background-position: center;
-            opacity: 0.4; /* 透明度降到15%，只保留法理元素的轮廓 */
+            opacity: 0.4; /* 透明度降到40%，保留法理元素的轮廓 */
             z-index: -1;   /* 放到最底层 */
             pointer-events: none; /* 防止阻挡鼠标点击 */
         }}
@@ -56,7 +55,8 @@ def set_page_bg_and_hide_elements(image_file):
         """
         st.markdown(css, unsafe_allow_html=True)
     except FileNotFoundError:
-        # 如果还没上传图片，只隐藏原生UI，不报错
+        # 【关键修改】：如果找不到图片，直接在网页顶端亮红灯报错！
+        st.error(f"🚨 严重错误：找不到背景图片 '{image_file}'。请确保已将图片上传至 GitHub 仓库，且命名为 bg.jpg（全小写）。")
         st.markdown("""
         <style>#MainMenu {visibility: hidden;} header {visibility: hidden;} .stDeployButton {display: none;} footer {visibility: hidden;}</style>
         """, unsafe_allow_html=True)
@@ -70,7 +70,7 @@ if 'history' not in st.session_state:
     st.session_state['history'] = []
 if 'ai_memo' not in st.session_state:
     st.session_state['ai_memo'] = None
-
+    
 # ================= 2. 国际化与专注法域词库 =================
 ui_texts = {
     "English": {
