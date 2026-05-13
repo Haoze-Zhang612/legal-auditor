@@ -41,7 +41,7 @@ def set_page_bg_and_hide_elements(image_file):
             background-image: url(data:image/jpeg;base64,{encoded_string});
             background-size: cover;
             background-position: center;
-            opacity: 0.25; /* 推荐设置 0.25 的透明度 */
+            opacity: 0.4; /* 推荐设置 0.25 的透明度 */
             z-index: -1;
             pointer-events: none;
         }}
