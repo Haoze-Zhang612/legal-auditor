@@ -90,7 +90,7 @@ def set_page_bg_and_hide_elements(image_file):
         st.markdown("""
         <style>#MainMenu {visibility: hidden;} header {visibility: hidden;} .stDeployButton {display: none;} footer {visibility: hidden;}</style>
         """, unsafe_allow_html=True)
-        
+
 # 调用函数，加载我们传到 github 的 bg.jpg
 set_page_bg_and_hide_elements("bg.jpg")
 
@@ -106,8 +106,8 @@ if 'ai_memo' not in st.session_state:
 # ================= 2. 国际化与专注法域词库 =================
 ui_texts = {
     "English": {
-        "title": "⚖️ Doctrinal Legal Tech Auditor",
-        "framework_notice": "⚖️ Jurisdiction: Germany (EU Acquis Applicable)",
+        "title": "⚖️ Legal Tech Auditor",
+        "framework_notice": "Jurisdiction: Germany (EU Acquis Applicable)",
         "input_label": "Enter Target URL",
         "btn_scan": "Run Compliance Audit",
         "history_label": "📜 Recent Audits",
@@ -133,8 +133,8 @@ ui_texts = {
         "ai_tag_suggest": "Strategic Mitigation"
     },
     "中文": {
-        "title": "⚖️ 深度法理自动化审计系统",
-        "framework_notice": "⚖️ 适用法域：德国（适用欧盟既有规则）",
+        "title": "⚖️ 自动化审计系统",
+        "framework_notice": "适用法域：德国（适用欧盟既有规则）",
         "input_label": "输入目标网址",
         "btn_scan": "开始法理审计",
         "history_label": "📜 最近扫描记录",
@@ -160,8 +160,8 @@ ui_texts = {
         "ai_tag_suggest": "合规改进建议"
     },
     "Deutsch": {
-        "title": "⚖️ Doktrinärer Legal-Tech-Auditor",
-        "framework_notice": "⚖️ Rechtsrahmen: Deutschland (unter Anwendung des EU-Acquis)",
+        "title": "⚖️ Legal-Tech-Auditor",
+        "framework_notice": "Rechtsrahmen: Deutschland (unter Anwendung des EU-Acquis)",
         "input_label": "Ziel-URL eingeben",
         "btn_scan": "Rechtsprüfung starten",
         "history_label": "📜 Letzte Prüfungen",
