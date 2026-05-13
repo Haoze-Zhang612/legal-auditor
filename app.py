@@ -24,7 +24,7 @@ def set_page_bg_and_hide_elements(image_file):
         .stDeployButton {{display: none;}}
         footer {{visibility: hidden;}}
         
-        /* 2. 背景变透明 */
+        /* 2. 核心修复：把 Streamlit 默认的实心背景变透明，让底层露出来 */
         .stApp {{
             background-color: transparent !important;
         }}
@@ -40,19 +40,19 @@ def set_page_bg_and_hide_elements(image_file):
             background-image: url(data:image/jpeg;base64,{encoded_string});
             background-size: cover;
             background-position: center;
-            opacity: 0.25; 
+            opacity: 0.25; /* 推荐设置 0.25 的透明度 */
             z-index: -1;
             pointer-events: none;
         }}
         
-        /* 4. 💻 桌面端核心阅读区样式 */
+        /* 4. 💻 桌面端核心阅读区：保留一定的底色，确保审计报告文字清晰可见 */
         .block-container {{
             background-color: var(--background-color); 
             border-radius: 15px; 
             padding: 3rem 4rem; /* 桌面端左右多留白，更显高级 */
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); 
             z-index: 1;
-            max-width: 1000px; /* 防止在大显示器上被拉得过宽，影响阅读体验 */
+            max-width: 1000px; /* 防止在大显示器上被拉得过宽 */
         }}
 
         /* 5. 📱 手机与平板适配 (当屏幕宽度小于 768px 时自动接管) */
@@ -79,7 +79,19 @@ def set_page_bg_and_hide_elements(image_file):
         st.markdown("""
         <style>#MainMenu {visibility: hidden;} header {visibility: hidden;} .stDeployButton {display: none;} footer {visibility: hidden;}</style>
         """, unsafe_allow_html=True)
-             
+
+# 调用函数，加载我们传到 github 的 bg.jpg
+set_page_bg_and_hide_elements("bg.jpg")
+
+# ================= 🚨 修复关键：保留系统状态初始化 🚨 =================
+if 'scan_result' not in st.session_state:
+    st.session_state['scan_result'] = None
+if 'history' not in st.session_state:
+    st.session_state['history'] = []
+if 'ai_memo' not in st.session_state:
+    st.session_state['ai_memo'] = None
+
+# (这里下方应该是你的 # ================= 2. 国际化与专注法域词库 ================= )     
 # ================= 2. 国际化与专注法域词库 =================
 ui_texts = {
     "English": {
