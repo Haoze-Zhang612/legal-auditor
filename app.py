@@ -12,16 +12,12 @@ import time
 # ================= 1. 页面与学术状态配置 =================
 st.set_page_config(page_title="TDM & GDPR Compliance Auditor", page_icon="⚖️", layout="wide")
 
-# ================= 【后端监控函数 - 升级支持关键词联动】 =================
+# ================= 【后端监控函数】 =================
 @st.cache_data(ttl=3600)
 def fetch_eu_updates(keywords=None):
     endpoint = "https://publications.europa.eu/webapi/rdf/sparql"
-    
-    # 动态构建 SPARQL 过滤器
-    # 如果检测到特定法律风险，则在欧盟数据库中检索包含该词条的法案
     keyword_filter = ""
     if keywords:
-        # 使用正则表达式进行不区分大小写的标题匹配
         keyword_filter = f"FILTER(regex(str(?title), '{keywords}', 'i'))"
 
     query = f"""
@@ -45,91 +41,47 @@ def fetch_eu_updates(keywords=None):
         return r.json()['results']['bindings'] if r.status_code == 200 else []
     except: return []
 
-# 将原有的隐藏 CSS 和 新的背景图 CSS 合并成一个函数
+# CSS 配置
 def set_page_bg_and_hide_elements(image_file):
     try:
         with open(image_file, "rb") as f:
             encoded_string = base64.b64encode(f.read()).decode()
-        
         css = f"""
         <style>
-        /* 1. 隐藏多余元素，但保留侧边栏展开按钮 (Sidebar Trigger) */
         #MainMenu {{visibility: hidden;}}
         .stDeployButton {{display: none;}}
         footer {{visibility: hidden;}}
-        
-        /* 特别修正：确保侧边栏收起时的那个 '>' 按钮可见 */
-        header {{
-            background-color: transparent !important;
-        }}
-        button[kind="headerNoPadding"] {{
-            visibility: visible !important;
-        }}
-
-        /* 2. 背景透明处理 */
-        .stApp {{
-            background-color: transparent !important;
-        }}
-        
-        /* 3. 设置带透明度的背景图 */
+        header {{ background-color: transparent !important; }}
+        button[kind="headerNoPadding"] {{ visibility: visible !important; }}
+        .stApp {{ background-color: transparent !important; }}
         .stApp::before {{
-            content: "";
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
+            content: ""; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background-image: url(data:image/jpeg;base64,{encoded_string});
-            background-size: cover;
-            background-position: center;
-            opacity: 0.25; 
-            z-index: -1;
-            pointer-events: none;
+            background-size: cover; background-position: center; opacity: 0.25; z-index: -1; pointer-events: none;
         }}
-        
-        /* 4. 桌面端阅读区 */
         .block-container {{
-            background-color: var(--background-color); 
-            border-radius: 15px; 
-            padding: 3rem 4rem; 
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); 
-            z-index: 1;
-            max-width: 1000px; 
+            background-color: var(--background-color); border-radius: 15px; 
+            padding: 3rem 4rem; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); 
+            z-index: 1; max-width: 1000px; 
         }}
-
-        /* 5. 🚀 强制正文变成加粗黑体 */
         .stMarkdown p, div[data-testid="stCaptionContainer"] p, .stAlert p {{
             font-family: "Microsoft YaHei", "SimHei", sans-serif !important;
             font-weight: bold !important;
         }}
-
-        /* 6. 🛠️ 强制修复：确保语言选项标签不换行成两行 */
-        div[data-testid="stSelectbox"] label {{
-            display: flex !important;
-            white-space: nowrap !important;
-            width: auto !important;
-            min-width: fit-content !important;
-        }}
-        div[data-testid="stSelectbox"] label p {{
-            white-space: nowrap !important;
-            overflow: visible !important;
-        }}
+        div[data-testid="stSelectbox"] label {{ display: flex !important; white-space: nowrap !important; }}
+        div[data-testid="stSelectbox"] label p {{ white-space: nowrap !important; }}
         </style>
         """
         st.markdown(css, unsafe_allow_html=True)
-    except FileNotFoundError:
-        st.error(f"🚨 背景图片加载失败")
+    except: pass
 
 set_page_bg_and_hide_elements("bg.jpg")
 
-if 'scan_result' not in st.session_state:
-    st.session_state['scan_result'] = None
-if 'history' not in st.session_state:
-    st.session_state['history'] = []
-if 'ai_memo' not in st.session_state:
-    st.session_state['ai_memo'] = None
+if 'scan_result' not in st.session_state: st.session_state['scan_result'] = None
+if 'history' not in st.session_state: st.session_state['history'] = []
+if 'ai_memo' not in st.session_state: st.session_state['ai_memo'] = None
 
-# ================= 2. 国际化与专注法域词库 =================
+# ================= 2. 国际化与侧边栏词库整合 =================
 ui_texts = {
     "English": {
         "title": "⚖️ Legal Tech Auditor",
@@ -157,7 +109,12 @@ ui_texts = {
         "ai_tag_status": "Current Doctrinal Status",
         "ai_tag_risk": "Compliance Friction",
         "ai_tag_suggest": "Strategic Mitigation",
-        "sidebar_relevant": "📍 Related to Current Audit"
+        # 侧边栏专属
+        "sidebar_title": "## 🇪🇺 EU Regulatory Feed",
+        "sidebar_updates": "Live Updates from Official Journal",
+        "sidebar_relevant": "📍 Related to Current Audit",
+        "sidebar_agent": "Verified by: **Compliance Audit Agent**",
+        "sidebar_policy": "Compliant with EU Open Data Policy."
     },
     "中文": {
         "title": "⚖️ 自动化审计系统",
@@ -185,7 +142,12 @@ ui_texts = {
         "ai_tag_status": "合规现状",
         "ai_tag_risk": "核心法理摩擦",
         "ai_tag_suggest": "合规改进建议",
-        "sidebar_relevant": "📍 审计相关动态"
+        # 侧边栏专属
+        "sidebar_title": "## 🇪🇺 欧盟法规动态",
+        "sidebar_updates": "实时获取自欧盟官方公报",
+        "sidebar_relevant": "📍 审计相关动态",
+        "sidebar_agent": "验证方: **合规审计系统**",
+        "sidebar_policy": "符合欧盟开放数据政策。"
     },
     "Deutsch": {
         "title": "⚖️ Legal-Tech-Auditor",
@@ -213,7 +175,12 @@ ui_texts = {
         "ai_tag_status": "Doktrinärer Status",
         "ai_tag_risk": "Compliance-Friktion",
         "ai_tag_suggest": "Strategische Minderung",
-        "sidebar_relevant": "📍 Audit-relevante Updates"
+        # 侧边栏专属
+        "sidebar_title": "## 🇪🇺 EU-Regulierungs-Feed",
+        "sidebar_updates": "Live-Updates aus dem Amtsblatt",
+        "sidebar_relevant": "📍 Audit-relevante Updates",
+        "sidebar_agent": "Verifiziert durch: **Compliance-Audit-Agent**",
+        "sidebar_policy": "Konform mit der EU-Open-Data-Richtlinie."
     }
 }
 
@@ -267,38 +234,31 @@ with lang_col:
     lang = st.selectbox("English / 中文 / Deutsch", ["English", "中文", "Deutsch"], index=0, key="persist_lang")
 t = ui_texts[lang]
 
-# ================= 【侧边栏 UI：关联审计结果动态调整】 =================
+# ================= 【侧边栏 UI：语言全联动版】 =================
 with st.sidebar:
-    st.markdown("## 🇪🇺 EU Regulatory Feed")
+    st.markdown(t["sidebar_title"]) # 标题随语言变化
     
-    # 动态逻辑：提取被审计网站的关键词
     active_keyword = None
     if st.session_state['scan_result']:
         r_temp = st.session_state['scan_result']
-        # 判定优先级：AI (TDM) > ADM > Privacy
         if r_temp["tdm"]["ai_bots"]: active_keyword = "Artificial Intelligence"
         elif r_temp["privacy"]["adm_declared"]: active_keyword = "Automated Decision"
         else: active_keyword = "Data Protection"
-        
-        # 显示当前关联标签
-        st.caption(f"{t['sidebar_relevant']}: **{active_keyword}**")
+        st.caption(f"{t['sidebar_relevant']}: **{active_keyword}**") # 动态标签随语言变化
     else:
-        st.caption("Live Updates from Official Journal")
+        st.caption(t["sidebar_updates"]) # 副标题随语言变化
 
-    # 调用更新后的函数，传入动态关键词
     updates = fetch_eu_updates(keywords=active_keyword)
-    
     if updates:
         for item in updates:
             with st.container(border=True):
                 st.error(f"**Update: {item['date']['value']}**")
                 st.markdown(f"**{item['title']['value']}**")
                 st.link_button("View CELEX", f"https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:{item['celex']['value']}")
-    else:
-        st.write("Monitoring related directives...")
-        
+    
     st.divider()
-    st.info(f"Verified by: **Compliance Audit Agent**\n\nCompliant with EU Open Data Policy.")
+    # 合规身份随语言变化
+    st.info(f"{t['sidebar_agent']}\n\n{t['sidebar_policy']}")
 
 # 核心控制台
 st.markdown("<br><br>", unsafe_allow_html=True)
