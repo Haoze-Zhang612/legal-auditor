@@ -17,15 +17,16 @@ st.set_page_config(page_title="TDM & GDPR Compliance Auditor", page_icon="⚖️
 def fetch_eu_updates(keywords=None):
     endpoint = "https://publications.europa.eu/webapi/rdf/sparql"
     
-    # 动态构建 SPARQL 过滤器：针对标题进行模糊匹配
+    # 动态构建过滤器
     keyword_filter = ""
     if keywords:
-        # 使用正则表达式匹配关键词
         keyword_filter = f"FILTER(regex(str(?title), '{keywords}', 'i'))"
 
+    # 核心修复：显式定义所有前缀，特别是 xsd
     query = f"""
     PREFIX cdm: <http://publications.europa.eu/ontology/cdm#>
     PREFIX dc: <http://purl.org/dc/elements/1.1/>
+    PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
     SELECT DISTINCT ?celex ?date ?title
     WHERE {{
       ?work a cdm:resource_legal .
@@ -38,11 +39,17 @@ def fetch_eu_updates(keywords=None):
     }}
     ORDER BY DESC(?date) LIMIT 5
     """
-    headers = {'Accept': 'application/sparql-results+json', 'User-Agent': 'Legal-Tech-Audit-Bot/1.0'}
+    headers = {{'Accept': 'application/sparql-results+json', 'User-Agent': 'Legal-Tech-Audit-Bot/1.0'}}
     try:
-        r = requests.get(endpoint, params={'query': query}, headers=headers, timeout=10)
-        return r.json()['results']['bindings'] if r.status_code == 200 else []
-    except: return []
+        r = requests.get(endpoint, params={{'query': query}}, headers=headers, timeout=15)
+        if r.status_code == 200:
+            return r.json()['results']['bindings']
+        else:
+            return []
+    except Exception as e:
+        # 如果报错，可以在控制台打印出原因
+        print(f"SPARQL Error: {{e}}")
+        return []
 
 # CSS 配置
 def set_page_bg_and_hide_elements(image_file):
