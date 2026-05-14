@@ -12,7 +12,7 @@ import time
 # ================= 1. 页面与学术状态配置 =================
 st.set_page_config(page_title="TDM & GDPR Compliance Auditor", page_icon="⚖️", layout="wide")
 
-# ================= 【新插入：后端监控函数】 =================
+# ================= 【后端监控函数】 =================
 @st.cache_data(ttl=86400)
 def fetch_eu_updates():
     endpoint = "https://publications.europa.eu/webapi/rdf/sparql"
@@ -30,7 +30,8 @@ def fetch_eu_updates():
     }
     ORDER BY DESC(?date) LIMIT 5
     """
-    headers = {'Accept': 'application/sparql-results+json', 'User-Agent': 'Haoze-Legal-Tech-Audit-Bot/1.0 (Contact: your_email@fau.de)'}
+    # 移除 User-Agent 中的个人名字
+    headers = {'Accept': 'application/sparql-results+json', 'User-Agent': 'Legal-Tech-Audit-Bot/1.0'}
     try:
         r = requests.get(endpoint, params={'query': query}, headers=headers, timeout=10)
         return r.json()['results']['bindings'] if r.status_code == 200 else []
@@ -44,18 +45,25 @@ def set_page_bg_and_hide_elements(image_file):
         
         css = f"""
         <style>
-        /* 1. 隐藏 Streamlit 原生元素 */
+        /* 1. 隐藏多余元素，但保留侧边栏展开按钮 (Sidebar Trigger) */
         #MainMenu {{visibility: hidden;}}
-        header {{visibility: hidden;}}
         .stDeployButton {{display: none;}}
         footer {{visibility: hidden;}}
         
-        /* 2. 核心修复：把 Streamlit 默认的实心背景变透明，让底层露出来 */
+        /* 特别修正：确保侧边栏收起时的那个 '>' 按钮可见 */
+        header {{
+            background-color: transparent !important;
+        }}
+        button[kind="headerNoPadding"] {{
+            visibility: visible !important;
+        }}
+
+        /* 2. 背景透明处理 */
         .stApp {{
             background-color: transparent !important;
         }}
         
-        /* 3. 设置带透明度的背景暗纹图 */
+        /* 3. 设置带透明度的背景图 */
         .stApp::before {{
             content: "";
             position: fixed;
@@ -71,7 +79,7 @@ def set_page_bg_and_hide_elements(image_file):
             pointer-events: none;
         }}
         
-        /* 4. 💻 桌面端核心阅读区 */
+        /* 4. 桌面端阅读区 */
         .block-container {{
             background-color: var(--background-color); 
             border-radius: 15px; 
@@ -81,30 +89,16 @@ def set_page_bg_and_hide_elements(image_file):
             max-width: 1000px; 
         }}
 
-        /* 5. 📱 手机与平板适配 */
-        @media (max-width: 768px) {{
-            .block-container {{
-                padding: 1.5rem 1rem !important; 
-                border-radius: 8px !important; 
-            }}
-        }}
-
-        /* 6. 强制语言选择器的标题单行显示 */
-        div[data-testid="stSelectbox"] label p {{
-            white-space: nowrap !important;
-        }}
-
-        /* 7. 🚀 新增：强制正文、副标题变成加粗黑体 */
+        /* 5. 🚀 强制正文变成加粗黑体 */
         .stMarkdown p, div[data-testid="stCaptionContainer"] p, .stAlert p {{
             font-family: "Microsoft YaHei", "SimHei", sans-serif !important;
             font-weight: bold !important;
-            color: var(--text-color) !important;
         }}
         </style>
         """
         st.markdown(css, unsafe_allow_html=True)
     except FileNotFoundError:
-        st.error(f"🚨 严重错误：找不到背景图片")
+        st.error(f"🚨 背景图片加载失败")
 
 set_page_bg_and_hide_elements("bg.jpg")
 
@@ -200,7 +194,7 @@ ui_texts = {
     }
 }
 
-# ================= 3. 高级审计逻辑 (欧盟/德国专属) =================
+# ================= 3. 高级审计逻辑 =================
 def get_ai_config(key):
     if key.startswith("gsk_"): return "Groq", "https://api.groq.com/openai/v1", "llama-3.3-70b-versatile"
     if key.startswith("AIza"): return "Gemini", "https://generativelanguage.googleapis.com/v1beta/openai/", "gemini-1.5-flash"
@@ -250,7 +244,7 @@ with lang_col:
     lang = st.selectbox("English / 中文 / Deutsch", ["English", "中文", "Deutsch"], index=0, key="persist_lang")
 t = ui_texts[lang]
 
-# ================= 【新插入：侧边栏 UI】 =================
+# ================= 【侧边栏 UI：移除名字】 =================
 with st.sidebar:
     st.markdown("## 🇪🇺 EU Regulatory Feed")
     st.caption("Live Updates from Official Journal")
@@ -262,7 +256,8 @@ with st.sidebar:
                 st.markdown(f"**{item['title']['value']}**")
                 st.link_button("View CELEX", f"https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:{item['celex']['value']}")
     st.divider()
-    st.info(f"Bot Identity: **Haoze Legal Agent**\n\nCompliant with EU Open Data Policy.")
+    # 这里将个人名字改为专业术语
+    st.info(f"Verified by: **Compliance Audit Agent**\n\nCompliant with EU Open Data Policy.")
 
 # 核心控制台
 st.markdown("<br><br>", unsafe_allow_html=True)
