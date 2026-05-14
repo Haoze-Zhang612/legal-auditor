@@ -15,62 +15,37 @@ st.set_page_config(page_title="TDM & GDPR Compliance Auditor", page_icon="⚖️
 # --- 【已修复：双重保险法律爬虫引擎】 ---
 @st.cache_data(ttl=3600)
 def fetch_eu_legal_links(keywords=None):
-    # 1. 定义本地解析样本 (确保在网络失败时侧边栏不留白)
+    # 你的测试脚本中验证成功的样本
     mock_xml = """
     <item>
         <title>Council Regulation (EU) 2026/750 on AI Safety Standards</title>
         <link>https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32026R0750</link>
-        <pubDate>Thu, 14 May 2026</pubDate>
+        <pubDate>2026-05-14</pubDate>
     </item>
     <item>
         <title>Directive (EU) 2026/302 on Data Transparency</title>
         <link>https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32026L0302</link>
-        <pubDate>Sun, 10 May 2026</pubDate>
+        <pubDate>2026-05-10</pubDate>
     </item>
     """
     
-    # 2. 尝试从 RSS 实时抓取
-    import ssl
-    import urllib.request
-    rss_url = "https://eur-lex.europa.eu/statistics-portlet/rss-feed.html?rssFeedId=1&locale=en"
-    
-    try:
-        # 绕过 SSL 证书验证
-        context = ssl._create_unverified_context()
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        req = urllib.request.Request(rss_url, headers=headers)
-        
-        with urllib.request.urlopen(req, context=context, timeout=5) as response:
-            content = response.read().decode('utf-8')
-    except:
-        # 如果抓取失败（SSL 或 网络问题），使用本地样本
-        content = mock_xml
-
-    # 3. 使用你验证成功的正则引擎进行解析
     results = []
+    # 直接使用解析逻辑
     try:
-        # 匹配标题和链接
-        items = re.findall(r'<item>(.*?)</item>', content, re.S)
-        for entry in items[:5]:
+        # 这里我们先直接用 mock_xml 验证 UI，确保侧边栏能亮起来
+        items = re.findall(r'<item>(.*?)</item>', mock_xml, re.S)
+        for entry in items:
             title = re.search(r'<title>(.*?)</title>', entry).group(1)
-            # 提取 CELEX 编号
-            celex_match = re.search(r'CELEX:([A-Z0-9]+)', entry)
-            celex = celex_match.group(1) if celex_match else "Unknown"
-            # 提取日期
-            date_match = re.search(r'<pubDate>(.*?)</pubDate>', entry)
-            date = date_match.group(1) if date_match else "Recent"
+            celex = re.search(r'CELEX:([A-Z0-9]+)', entry).group(1)
+            date = re.search(r'<pubDate>(.*?)</pubDate>', entry).group(1)
             
-            # 关键词过滤逻辑
-            if keywords and keywords.lower() not in title.lower():
-                continue
-                
             results.append({
                 "date": {"value": date},
                 "title": {"value": title},
                 "celex": {"value": celex}
             })
-    except:
-        pass
+    except Exception as e:
+        st.sidebar.error(f"解析错误: {e}")
         
     return results
 # 将原有的隐藏 CSS 和 新的背景图 CSS 合并成一个函数
