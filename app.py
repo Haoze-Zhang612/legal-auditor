@@ -284,10 +284,18 @@ def get_ai_config(key):
     return "OpenAI", "https://api.openai.com/v1", "gpt-4o-mini"
 
 def run_academic_audit(url):
-    headers = {'User-Agent': 'Mozilla/5.0'}
+    # 🌟 新增：智能处理 URL，自动去除前后空格并补全协议头
+    url = url.strip()
+    if not url.startswith(('http://', 'https://')):
+        url = 'https://' + url
+        
+    # 🌟 优化：使用更完整的现代浏览器 User-Agent，降低被防爬虫系统拦截的概率
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+    
     try:
         res = requests.get(url, headers=headers, timeout=10)
         soup = BeautifulSoup(res.text, 'html.parser')
+        # 这里使用的 url 已经是经过上面修复过带有协议头的安全 url 了
         domain = f"{urlparse(url).scheme}://{urlparse(url).netloc}"
         
         # 3.1 细粒度 TDM 机器可读性探测
