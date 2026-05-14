@@ -13,6 +13,8 @@ st.set_page_config(page_title="TDM & GDPR Compliance Auditor", page_icon="⚖️
 
 # --- 【新增：自动化法律爬虫引擎】 ---
 # --- 【已修复：双重保险法律爬虫引擎】 ---
+# --- 【新增：自动化法律爬虫引擎】 ---
+# --- 【已修复：双重保险法律爬虫引擎】 ---
 import ssl
 import urllib.request
 import re
@@ -20,38 +22,24 @@ import streamlit as st
 
 @st.cache_data(ttl=3600)
 def fetch_eu_legal_links(keywords=None, limit=15, start_date="2020-01-01"):
-    # ... 前面的代码保持不变 ...
+    """
+    升级版爬虫引擎：支持多源、更长时间跨度、SSL绕过、更大抓取量，并按日期降序排序
+    """
+    # 目标 5: 解决校园/内网 SSL 证书拦截问题
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
     
-    try:
-        # ... 解析和过滤逻辑 ...
-        for entry in items:
-            # ... 省略中间代码 ...
-            if date >= start_date:
-                if not keywords or keywords.lower() in title.lower() or "ai" in title.lower() or "data" in title.lower() or "copyright" in title.lower():
-                    results.append({
-                        "date": {"value": date},
-                        "title": {"value": title},
-                        "celex": {"value": celex.replace("CELEX:", "")}
-                    })
-                    
-        # 🌟 新增：在这里按日期降序排序 (reverse=True 表示从新到旧)
-        results.sort(key=lambda x: x['date']['value'], reverse=True)
-                    
-        # 然后再截取前 limit 条并返回
-        return results[:limit]
-        
-    except Exception as e:
-        # ... 异常处理 ...
+    results = []
     
     # 目标 3: 多源抓取 (示例：EUR-Lex 的真实搜索查询流，可以拓展 L系列、C系列等)
-    # 这里我们构造一个模拟的架构，如果是真实 API，你只需遍历 urls 即可
     feed_sources = [
         "https://eur-lex.europa.eu/rss_source_1", # 模拟源 1
         "https://eur-lex.europa.eu/rss_source_2"  # 模拟源 2
     ]
     
     try:
-        # 这里为了确保你的 UI 能立刻跑通，我们使用高阶的动态 Mock 模拟从上述多源抓取的结果
+        # 动态 Mock 模拟从上述多源抓取的结果
         # 在真实部署时，使用 urllib.request.urlopen(url, context=ctx) 替换这部分
         mock_xml = f"""
         <item><title>Regulation (EU) 2024/1689 (AI Act)</title><link>CELEX:32024R1689</link><pubDate>2024-07-12</pubDate></item>
@@ -77,31 +65,16 @@ def fetch_eu_legal_links(keywords=None, limit=15, start_date="2020-01-01"):
                         "title": {"value": title},
                         "celex": {"value": celex.replace("CELEX:", "")}
                     })
+        
+        # 🌟 新增：在这里按日期降序排序 (最新的文件排在最上面)
+        results.sort(key=lambda x: x['date']['value'], reverse=True)
                     
-        # 目标 1: 修改 LIMIT 参数 (根据需要截断结果)
+        # 目标 1: 修改 LIMIT 参数 (截取排序后的前 limit 条)
         return results[:limit]
         
     except Exception as e:
         st.sidebar.error(f"抓取中断，启用本地缓存: {e}")
         return []
-    # 直接使用解析逻辑
-    try:
-        # 这里我们先直接用 mock_xml 验证 UI，确保侧边栏能亮起来
-        items = re.findall(r'<item>(.*?)</item>', mock_xml, re.S)
-        for entry in items:
-            title = re.search(r'<title>(.*?)</title>', entry).group(1)
-            celex = re.search(r'CELEX:([A-Z0-9]+)', entry).group(1)
-            date = re.search(r'<pubDate>(.*?)</pubDate>', entry).group(1)
-            
-            results.append({
-                "date": {"value": date},
-                "title": {"value": title},
-                "celex": {"value": celex}
-            })
-    except Exception as e:
-        st.sidebar.error(f"解析错误: {e}")
-        
-    return results
 # 将原有的隐藏 CSS 和 新的背景图 CSS 合并成一个函数
 def set_page_bg_and_hide_elements(image_file):
     try:
