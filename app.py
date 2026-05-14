@@ -12,12 +12,15 @@ import time
 # ================= 1. 页面与学术状态配置 =================
 st.set_page_config(page_title="TDM & GDPR Compliance Auditor", page_icon="⚖️", layout="wide")
 
-# ================= 【后端监控函数】 =================
+# ================= 【后端监控函数 - 支持关键词动态过滤】 =================
 @st.cache_data(ttl=3600)
 def fetch_eu_updates(keywords=None):
     endpoint = "https://publications.europa.eu/webapi/rdf/sparql"
+    
+    # 动态构建 SPARQL 过滤器：针对标题进行模糊匹配
     keyword_filter = ""
     if keywords:
+        # 使用正则表达式匹配关键词
         keyword_filter = f"FILTER(regex(str(?title), '{keywords}', 'i'))"
 
     query = f"""
@@ -81,7 +84,7 @@ if 'scan_result' not in st.session_state: st.session_state['scan_result'] = None
 if 'history' not in st.session_state: st.session_state['history'] = []
 if 'ai_memo' not in st.session_state: st.session_state['ai_memo'] = None
 
-# ================= 2. 国际化与侧边栏词库整合 =================
+# ================= 2. 国际化词库 (侧边栏联动版) =================
 ui_texts = {
     "English": {
         "title": "⚖️ Legal Tech Auditor",
@@ -109,7 +112,6 @@ ui_texts = {
         "ai_tag_status": "Current Doctrinal Status",
         "ai_tag_risk": "Compliance Friction",
         "ai_tag_suggest": "Strategic Mitigation",
-        # 侧边栏专属
         "sidebar_title": "## 🇪🇺 EU Regulatory Feed",
         "sidebar_updates": "Live Updates from Official Journal",
         "sidebar_relevant": "📍 Related to Current Audit",
@@ -142,7 +144,6 @@ ui_texts = {
         "ai_tag_status": "合规现状",
         "ai_tag_risk": "核心法理摩擦",
         "ai_tag_suggest": "合规改进建议",
-        # 侧边栏专属
         "sidebar_title": "## 🇪🇺 欧盟法规动态",
         "sidebar_updates": "实时获取自欧盟官方公报",
         "sidebar_relevant": "📍 审计相关动态",
@@ -175,7 +176,6 @@ ui_texts = {
         "ai_tag_status": "Doktrinärer Status",
         "ai_tag_risk": "Compliance-Friktion",
         "ai_tag_suggest": "Strategische Minderung",
-        # 侧边栏专属
         "sidebar_title": "## 🇪🇺 EU-Regulierungs-Feed",
         "sidebar_updates": "Live-Updates aus dem Amtsblatt",
         "sidebar_relevant": "📍 Audit-relevante Updates",
@@ -234,30 +234,40 @@ with lang_col:
     lang = st.selectbox("English / 中文 / Deutsch", ["English", "中文", "Deutsch"], index=0, key="persist_lang")
 t = ui_texts[lang]
 
-# ================= 【侧边栏 UI：语言全联动版】 =================
+# ================= 【侧边栏 UI：场景A核心实现】 =================
 with st.sidebar:
-    st.markdown(t["sidebar_title"]) # 标题随语言变化
+    st.markdown(t["sidebar_title"])
     
+    # 动态场景联动逻辑
     active_keyword = None
     if st.session_state['scan_result']:
         r_temp = st.session_state['scan_result']
-        if r_temp["tdm"]["ai_bots"]: active_keyword = "Artificial Intelligence"
-        elif r_temp["privacy"]["adm_declared"]: active_keyword = "Automated Decision"
-        else: active_keyword = "Data Protection"
-        st.caption(f"{t['sidebar_relevant']}: **{active_keyword}**") # 动态标签随语言变化
+        # 1. 场景 A 核心关键词映射：根据审计发现自动提取法律特征
+        if r_temp["tdm"]["ai_bots"]: active_keyword = "Artificial Intelligence" # 如果屏蔽AI，则找AI法案
+        elif r_temp["privacy"]["adm_declared"]: active_keyword = "Automated Decision" # 如果有ADM，则找ADM法案
+        else: active_keyword = "Data Protection" # 默认检索数据保护
+        
+        st.caption(f"{t['sidebar_relevant']}: **{active_keyword}**")
     else:
-        st.caption(t["sidebar_updates"]) # 副标题随语言变化
+        st.caption(t["sidebar_updates"])
 
+    # 2. 执行关联查询（传入提取出的关键词）
     updates = fetch_eu_updates(keywords=active_keyword)
+    
+    # 回退机制：如果关键词检索不到内容，则显示最新的通用法律动态，防止界面留白
+    if not updates and active_keyword:
+        updates = fetch_eu_updates(keywords=None)
+
     if updates:
         for item in updates:
             with st.container(border=True):
                 st.error(f"**Update: {item['date']['value']}**")
                 st.markdown(f"**{item['title']['value']}**")
                 st.link_button("View CELEX", f"https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:{item['celex']['value']}")
+    else:
+        st.write("Monitoring Official Journal...")
     
     st.divider()
-    # 合规身份随语言变化
     st.info(f"{t['sidebar_agent']}\n\n{t['sidebar_policy']}")
 
 # 核心控制台
@@ -283,7 +293,7 @@ with mid:
             with cols[i]:
                 st.button(f"📊 {item['score']}pts\n{urlparse(item['url']).netloc}", key=f"hist_{i}", use_container_width=True)
 
-# ================= 5. 深度审计结果面板 =================
+# ================= 5. 深度审计结果面板 (原样保留) =================
 if st.session_state['scan_result']:
     r = st.session_state['scan_result']
     st.markdown("---")
