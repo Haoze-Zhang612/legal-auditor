@@ -13,7 +13,8 @@ import time
 st.set_page_config(page_title="TDM & GDPR Compliance Auditor", page_icon="⚖️", layout="wide")
 
 # ================= 【后端监控函数】 =================
-@st.cache_data(ttl=86400)
+# 修改 ttl 为 3600 秒（1小时），确保每小时自动刷新欧盟法律数据
+@st.cache_data(ttl=3600)
 def fetch_eu_updates():
     endpoint = "https://publications.europa.eu/webapi/rdf/sparql"
     query = """
@@ -30,7 +31,6 @@ def fetch_eu_updates():
     }
     ORDER BY DESC(?date) LIMIT 5
     """
-    # 移除 User-Agent 中的个人名字
     headers = {'Accept': 'application/sparql-results+json', 'User-Agent': 'Legal-Tech-Audit-Bot/1.0'}
     try:
         r = requests.get(endpoint, params={'query': query}, headers=headers, timeout=10)
@@ -93,6 +93,18 @@ def set_page_bg_and_hide_elements(image_file):
         .stMarkdown p, div[data-testid="stCaptionContainer"] p, .stAlert p {{
             font-family: "Microsoft YaHei", "SimHei", sans-serif !important;
             font-weight: bold !important;
+        }}
+
+        /* 6. 🛠️ 强制修复：确保语言选项标签不换行成两行 */
+        div[data-testid="stSelectbox"] label {{
+            display: flex !important;
+            white-space: nowrap !important;
+            width: auto !important;
+            min-width: fit-content !important;
+        }}
+        div[data-testid="stSelectbox"] label p {{
+            white-space: nowrap !important;
+            overflow: visible !important;
         }}
         </style>
         """
@@ -244,7 +256,7 @@ with lang_col:
     lang = st.selectbox("English / 中文 / Deutsch", ["English", "中文", "Deutsch"], index=0, key="persist_lang")
 t = ui_texts[lang]
 
-# ================= 【侧边栏 UI：移除名字】 =================
+# ================= 【侧边栏 UI】 =================
 with st.sidebar:
     st.markdown("## 🇪🇺 EU Regulatory Feed")
     st.caption("Live Updates from Official Journal")
@@ -256,7 +268,6 @@ with st.sidebar:
                 st.markdown(f"**{item['title']['value']}**")
                 st.link_button("View CELEX", f"https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:{item['celex']['value']}")
     st.divider()
-    # 这里将个人名字改为专业术语
     st.info(f"Verified by: **Compliance Audit Agent**\n\nCompliant with EU Open Data Policy.")
 
 # 核心控制台
