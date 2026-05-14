@@ -20,15 +20,28 @@ import streamlit as st
 
 @st.cache_data(ttl=3600)
 def fetch_eu_legal_links(keywords=None, limit=15, start_date="2020-01-01"):
-    """
-    升级版爬虫引擎：支持多源、更长时间跨度、SSL绕过和更大抓取量
-    """
-    # 目标 5: 解决校园/内网 SSL 证书拦截问题
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
+    # ... 前面的代码保持不变 ...
     
-    results = []
+    try:
+        # ... 解析和过滤逻辑 ...
+        for entry in items:
+            # ... 省略中间代码 ...
+            if date >= start_date:
+                if not keywords or keywords.lower() in title.lower() or "ai" in title.lower() or "data" in title.lower() or "copyright" in title.lower():
+                    results.append({
+                        "date": {"value": date},
+                        "title": {"value": title},
+                        "celex": {"value": celex.replace("CELEX:", "")}
+                    })
+                    
+        # 🌟 新增：在这里按日期降序排序 (reverse=True 表示从新到旧)
+        results.sort(key=lambda x: x['date']['value'], reverse=True)
+                    
+        # 然后再截取前 limit 条并返回
+        return results[:limit]
+        
+    except Exception as e:
+        # ... 异常处理 ...
     
     # 目标 3: 多源抓取 (示例：EUR-Lex 的真实搜索查询流，可以拓展 L系列、C系列等)
     # 这里我们构造一个模拟的架构，如果是真实 API，你只需遍历 urls 即可
