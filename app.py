@@ -12,23 +12,31 @@ import time
 # ================= 1. 页面与学术状态配置 =================
 st.set_page_config(page_title="TDM & GDPR Compliance Auditor", page_icon="⚖️", layout="wide")
 
-# ================= 【后端监控函数】 =================
-# 修改 ttl 为 3600 秒（1小时），确保每小时自动刷新欧盟法律数据
+# ================= 【后端监控函数 - 升级支持关键词联动】 =================
 @st.cache_data(ttl=3600)
-def fetch_eu_updates():
+def fetch_eu_updates(keywords=None):
     endpoint = "https://publications.europa.eu/webapi/rdf/sparql"
-    query = """
+    
+    # 动态构建 SPARQL 过滤器
+    # 如果检测到特定法律风险，则在欧盟数据库中检索包含该词条的法案
+    keyword_filter = ""
+    if keywords:
+        # 使用正则表达式进行不区分大小写的标题匹配
+        keyword_filter = f"FILTER(regex(str(?title), '{keywords}', 'i'))"
+
+    query = f"""
     PREFIX cdm: <http://publications.europa.eu/ontology/cdm#>
     PREFIX dc: <http://purl.org/dc/elements/1.1/>
     SELECT DISTINCT ?celex ?date ?title
-    WHERE {
+    WHERE {{
       ?work a cdm:resource_legal .
       ?work cdm:resource_legal_date_publication ?date .
       ?work dc:title ?title .
       ?work cdm:resource_legal_id_celex ?celex .
       FILTER(lang(?title) = "en")
-      FILTER(?date >= "2026-01-01"^^xsd:date)
-    }
+      FILTER(?date >= "2024-01-01"^^xsd:date) 
+      {keyword_filter}
+    }}
     ORDER BY DESC(?date) LIMIT 5
     """
     headers = {'Accept': 'application/sparql-results+json', 'User-Agent': 'Legal-Tech-Audit-Bot/1.0'}
@@ -148,7 +156,8 @@ ui_texts = {
         "ai_analysis_title": " Analysis Results",
         "ai_tag_status": "Current Doctrinal Status",
         "ai_tag_risk": "Compliance Friction",
-        "ai_tag_suggest": "Strategic Mitigation"
+        "ai_tag_suggest": "Strategic Mitigation",
+        "sidebar_relevant": "📍 Related to Current Audit"
     },
     "中文": {
         "title": "⚖️ 自动化审计系统",
@@ -175,7 +184,8 @@ ui_texts = {
         "ai_analysis_title": " 分析结果",
         "ai_tag_status": "合规现状",
         "ai_tag_risk": "核心法理摩擦",
-        "ai_tag_suggest": "合规改进建议"
+        "ai_tag_suggest": "合规改进建议",
+        "sidebar_relevant": "📍 审计相关动态"
     },
     "Deutsch": {
         "title": "⚖️ Legal-Tech-Auditor",
@@ -202,7 +212,8 @@ ui_texts = {
         "ai_analysis_title": " Analyseergebnis",
         "ai_tag_status": "Doktrinärer Status",
         "ai_tag_risk": "Compliance-Friktion",
-        "ai_tag_suggest": "Strategische Minderung"
+        "ai_tag_suggest": "Strategische Minderung",
+        "sidebar_relevant": "📍 Audit-relevante Updates"
     }
 }
 
@@ -256,17 +267,36 @@ with lang_col:
     lang = st.selectbox("English / 中文 / Deutsch", ["English", "中文", "Deutsch"], index=0, key="persist_lang")
 t = ui_texts[lang]
 
-# ================= 【侧边栏 UI】 =================
+# ================= 【侧边栏 UI：关联审计结果动态调整】 =================
 with st.sidebar:
     st.markdown("## 🇪🇺 EU Regulatory Feed")
-    st.caption("Live Updates from Official Journal")
-    updates = fetch_eu_updates()
+    
+    # 动态逻辑：提取被审计网站的关键词
+    active_keyword = None
+    if st.session_state['scan_result']:
+        r_temp = st.session_state['scan_result']
+        # 判定优先级：AI (TDM) > ADM > Privacy
+        if r_temp["tdm"]["ai_bots"]: active_keyword = "Artificial Intelligence"
+        elif r_temp["privacy"]["adm_declared"]: active_keyword = "Automated Decision"
+        else: active_keyword = "Data Protection"
+        
+        # 显示当前关联标签
+        st.caption(f"{t['sidebar_relevant']}: **{active_keyword}**")
+    else:
+        st.caption("Live Updates from Official Journal")
+
+    # 调用更新后的函数，传入动态关键词
+    updates = fetch_eu_updates(keywords=active_keyword)
+    
     if updates:
         for item in updates:
             with st.container(border=True):
                 st.error(f"**Update: {item['date']['value']}**")
                 st.markdown(f"**{item['title']['value']}**")
                 st.link_button("View CELEX", f"https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:{item['celex']['value']}")
+    else:
+        st.write("Monitoring related directives...")
+        
     st.divider()
     st.info(f"Verified by: **Compliance Audit Agent**\n\nCompliant with EU Open Data Policy.")
 
