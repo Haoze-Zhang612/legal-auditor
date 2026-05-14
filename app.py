@@ -7,91 +7,104 @@ from openai import OpenAI
 import re
 import datetime
 import base64
-import time
 
 # ================= 1. 页面与学术状态配置 =================
 st.set_page_config(page_title="TDM & GDPR Compliance Auditor", page_icon="⚖️", layout="wide")
 
-# ================= 【后端监控函数 - 支持关键词动态过滤】 =================
-@st.cache_data(ttl=3600)
-def fetch_eu_updates(keywords=None):
-    endpoint = "https://publications.europa.eu/webapi/rdf/sparql"
-    
-    # 动态构建过滤器
-    keyword_filter = ""
-    if keywords:
-        keyword_filter = f"FILTER(regex(str(?title), '{keywords}', 'i'))"
 
-    # 核心修复：显式定义所有前缀，特别是 xsd
-    query = f"""
-    PREFIX cdm: <http://publications.europa.eu/ontology/cdm#>
-    PREFIX dc: <http://purl.org/dc/elements/1.1/>
-    PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
-    SELECT DISTINCT ?celex ?date ?title
-    WHERE {{
-      ?work a cdm:resource_legal .
-      ?work cdm:resource_legal_date_publication ?date .
-      ?work dc:title ?title .
-      ?work cdm:resource_legal_id_celex ?celex .
-      FILTER(lang(?title) = "en")
-      FILTER(?date >= "2024-01-01"^^xsd:date) 
-      {keyword_filter}
-    }}
-    ORDER BY DESC(?date) LIMIT 5
-    """
-    headers = {{'Accept': 'application/sparql-results+json', 'User-Agent': 'Legal-Tech-Audit-Bot/1.0'}}
-    try:
-        r = requests.get(endpoint, params={{'query': query}}, headers=headers, timeout=15)
-        if r.status_code == 200:
-            return r.json()['results']['bindings']
-        else:
-            return []
-    except Exception as e:
-        # 如果报错，可以在控制台打印出原因
-        print(f"SPARQL Error: {{e}}")
-        return []
-
-# CSS 配置
+# 将原有的隐藏 CSS 和 新的背景图 CSS 合并成一个函数
 def set_page_bg_and_hide_elements(image_file):
     try:
         with open(image_file, "rb") as f:
             encoded_string = base64.b64encode(f.read()).decode()
+        
         css = f"""
         <style>
+        /* 1. 隐藏 Streamlit 原生元素 */
         #MainMenu {{visibility: hidden;}}
+        header {{visibility: hidden;}}
         .stDeployButton {{display: none;}}
         footer {{visibility: hidden;}}
-        header {{ background-color: transparent !important; }}
-        button[kind="headerNoPadding"] {{ visibility: visible !important; }}
-        .stApp {{ background-color: transparent !important; }}
+        
+        /* 2. 核心修复：把 Streamlit 默认的实心背景变透明，让底层露出来 */
+        .stApp {{
+            background-color: transparent !important;
+        }}
+        
+        /* 3. 设置带透明度的背景暗纹图 */
         .stApp::before {{
-            content: ""; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
             background-image: url(data:image/jpeg;base64,{encoded_string});
-            background-size: cover; background-position: center; opacity: 0.25; z-index: -1; pointer-events: none;
+            background-size: cover;
+            background-position: center;
+            opacity: 0.25; /* 💡 如果你想让第一张图的背景字变黑，把这里的 0.25 改成 0.6 或更高 */
+            z-index: -1;
+            pointer-events: none;
         }}
+        
+        /* 4. 💻 桌面端核心阅读区：保留一定的底色，确保审计报告文字清晰可见 */
         .block-container {{
-            background-color: var(--background-color); border-radius: 15px; 
-            padding: 3rem 4rem; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); 
-            z-index: 1; max-width: 1000px; 
+            background-color: var(--background-color); 
+            border-radius: 15px; 
+            padding: 3rem 4rem; 
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); 
+            z-index: 1;
+            max-width: 1000px; 
         }}
-        .stMarkdown p, div[data-testid="stCaptionContainer"] p, .stAlert p {{
+
+        /* 5. 📱 手机与平板适配 */
+        @media (max-width: 768px) {{
+            .block-container {{
+                padding: 1.5rem 1rem !important; 
+                border-radius: 8px !important; 
+            }}
+            h1 {{
+                font-size: 1.8rem !important;
+                text-align: center;
+            }}
+            div[data-baseweb="select"], div[data-baseweb="input"] {{
+                font-size: 0.9rem !important;
+            }}
+        }}
+
+        /* 6. 强制语言选择器的标题单行显示（不换行） */
+        div[data-testid="stSelectbox"] label p {{
+            white-space: nowrap !important;
+        }}
+
+        /* 7. 🚀 新增：强制正文、副标题变成加粗黑体，并加深颜色 */
+        .stMarkdown p, div[data-testid="stCaptionContainer"] p {{
             font-family: "Microsoft YaHei", "SimHei", sans-serif !important;
             font-weight: bold !important;
+            color: var(--text-color) !important; /* 保证日间模式是纯黑，夜间模式是纯白，不发灰 */
         }}
-        div[data-testid="stSelectbox"] label {{ display: flex !important; white-space: nowrap !important; }}
-        div[data-testid="stSelectbox"] label p {{ white-space: nowrap !important; }}
         </style>
         """
         st.markdown(css, unsafe_allow_html=True)
-    except: pass
+    except FileNotFoundError:
+        st.error(f"🚨 严重错误：找不到背景图片 '{image_file}'。请确保已将图片上传至 GitHub 仓库，且命名为 bg.jpg（全小写）。")
+        st.markdown("""
+        <style>#MainMenu {visibility: hidden;} header {visibility: hidden;} .stDeployButton {display: none;} footer {visibility: hidden;}</style>
+        """, unsafe_allow_html=True)
 
+# 调用函数，加载我们传到 github 的 bg.jpg
 set_page_bg_and_hide_elements("bg.jpg")
 
-if 'scan_result' not in st.session_state: st.session_state['scan_result'] = None
-if 'history' not in st.session_state: st.session_state['history'] = []
-if 'ai_memo' not in st.session_state: st.session_state['ai_memo'] = None
+# ================= 🚨 修复关键：保留系统状态初始化 🚨 =================
+if 'scan_result' not in st.session_state:
+    st.session_state['scan_result'] = None
+if 'history' not in st.session_state:
+    st.session_state['history'] = []
+if 'ai_memo' not in st.session_state:
+    st.session_state['ai_memo'] = None
 
-# ================= 2. 国际化词库 (侧边栏联动版) =================
+# (这里下方应该是你的 # ================= 2. 国际化与专注法域词库 ================= )
+# ================= 2. 国际化与专注法域词库 =================
 ui_texts = {
     "English": {
         "title": "⚖️ Legal Tech Auditor",
@@ -118,12 +131,7 @@ ui_texts = {
         "ai_analysis_title": " Analysis Results",
         "ai_tag_status": "Current Doctrinal Status",
         "ai_tag_risk": "Compliance Friction",
-        "ai_tag_suggest": "Strategic Mitigation",
-        "sidebar_title": "## 🇪🇺 EU Regulatory Feed",
-        "sidebar_updates": "Live Updates from Official Journal",
-        "sidebar_relevant": "📍 Related to Current Audit",
-        "sidebar_agent": "Verified by: **Compliance Audit Agent**",
-        "sidebar_policy": "Compliant with EU Open Data Policy."
+        "ai_tag_suggest": "Strategic Mitigation"
     },
     "中文": {
         "title": "⚖️ 自动化审计系统",
@@ -150,12 +158,7 @@ ui_texts = {
         "ai_analysis_title": " 分析结果",
         "ai_tag_status": "合规现状",
         "ai_tag_risk": "核心法理摩擦",
-        "ai_tag_suggest": "合规改进建议",
-        "sidebar_title": "## 🇪🇺 欧盟法规动态",
-        "sidebar_updates": "实时获取自欧盟官方公报",
-        "sidebar_relevant": "📍 审计相关动态",
-        "sidebar_agent": "验证方: **合规审计系统**",
-        "sidebar_policy": "符合欧盟开放数据政策。"
+        "ai_tag_suggest": "合规改进建议"
     },
     "Deutsch": {
         "title": "⚖️ Legal-Tech-Auditor",
@@ -182,16 +185,11 @@ ui_texts = {
         "ai_analysis_title": " Analyseergebnis",
         "ai_tag_status": "Doktrinärer Status",
         "ai_tag_risk": "Compliance-Friktion",
-        "ai_tag_suggest": "Strategische Minderung",
-        "sidebar_title": "## 🇪🇺 EU-Regulierungs-Feed",
-        "sidebar_updates": "Live-Updates aus dem Amtsblatt",
-        "sidebar_relevant": "📍 Audit-relevante Updates",
-        "sidebar_agent": "Verifiziert durch: **Compliance-Audit-Agent**",
-        "sidebar_policy": "Konform mit der EU-Open-Data-Richtlinie."
+        "ai_tag_suggest": "Strategische Minderung"
     }
 }
 
-# ================= 3. 高级审计逻辑 =================
+# ================= 3. 高级审计逻辑 (欧盟/德国专属) =================
 def get_ai_config(key):
     if key.startswith("gsk_"): return "Groq", "https://api.groq.com/openai/v1", "llama-3.3-70b-versatile"
     if key.startswith("AIza"): return "Gemini", "https://generativelanguage.googleapis.com/v1beta/openai/", "gemini-1.5-flash"
@@ -204,6 +202,8 @@ def run_academic_audit(url):
         res = requests.get(url, headers=headers, timeout=10)
         soup = BeautifulSoup(res.text, 'html.parser')
         domain = f"{urlparse(url).scheme}://{urlparse(url).netloc}"
+        
+        # 3.1 细粒度 TDM 机器可读性探测
         ai_bots_blocked = []
         general_bots_blocked = False
         try:
@@ -211,25 +211,39 @@ def run_academic_audit(url):
             ai_bots_blocked = [b for b in ['gptbot', 'ccbot', 'anthropic-ai', 'claudebot'] if b in r_txt and 'disallow' in r_txt]
             general_bots_blocked = '*' in r_txt and 'disallow: /' in r_txt
         except: pass
+        
         meta = soup.find('meta', attrs={'name': re.compile(r'tdm-reservation', re.I)})
+        
+        # 3.2 隐私与 ADM (自动化决策) 定向嗅探
         legal_url, legal_text = None, ""
         adm_flag = False
         weights = {'privacy':15, 'datenschutz':15, 'impressum':10, 'parking':-30}
+        
         for a in soup.find_all('a', href=True):
             score = sum(v for k, v in weights.items() if k in a.get_text().lower() or k in a['href'].lower())
             if score > 10:
                 legal_url = urljoin(url, a['href'])
                 break 
+                
         if legal_url:
             l_res = requests.get(legal_url, headers=headers, timeout=5)
             legal_text = BeautifulSoup(l_res.text, 'html.parser').get_text()[:4000]
             adm_flag = any(kw in legal_text.lower() for kw in ['automated decision', 'profiling', 'automatisierte entscheidung', '自动化决策'])
+
+        # 3.3 评分逻辑 (锚定 EU/DE 标准)
         score = 20
         if ai_bots_blocked or meta: score += 30
-        elif general_bots_blocked: score += 10
+        elif general_bots_blocked: score += 10 # 模糊拦截给低分
         if adm_flag: score += 15
         if legal_url: score += 35
-        return {"url": url, "tdm": {"meta": meta is not None, "ai_bots": ai_bots_blocked, "general_bots": general_bots_blocked}, "privacy": {"policy_url": legal_url, "adm_declared": adm_flag}, "score": score, "text": legal_text if legal_text else soup.get_text()[:3000]}
+
+        raw_data = {
+            "url": url, 
+            "tdm": {"meta": meta is not None, "ai_bots": ai_bots_blocked, "general_bots": general_bots_blocked},
+            "privacy": {"policy_url": legal_url, "adm_declared": adm_flag},
+            "score": score, "text": legal_text if legal_text else soup.get_text()[:3000]
+        }
+        return raw_data
     except Exception as e:
         st.error(f"Audit Failed: {e}")
         return None
@@ -238,51 +252,18 @@ def run_academic_audit(url):
 
 _, lang_col = st.columns([5, 1])
 with lang_col:
+    # 默认英文，显示三语标签
     lang = st.selectbox("English / 中文 / Deutsch", ["English", "中文", "Deutsch"], index=0, key="persist_lang")
 t = ui_texts[lang]
-
-# ================= 【侧边栏 UI：场景A核心实现】 =================
-with st.sidebar:
-    st.markdown(t["sidebar_title"])
-    
-    # 动态场景联动逻辑
-    active_keyword = None
-    if st.session_state['scan_result']:
-        r_temp = st.session_state['scan_result']
-        # 1. 场景 A 核心关键词映射：根据审计发现自动提取法律特征
-        if r_temp["tdm"]["ai_bots"]: active_keyword = "Artificial Intelligence" # 如果屏蔽AI，则找AI法案
-        elif r_temp["privacy"]["adm_declared"]: active_keyword = "Automated Decision" # 如果有ADM，则找ADM法案
-        else: active_keyword = "Data Protection" # 默认检索数据保护
-        
-        st.caption(f"{t['sidebar_relevant']}: **{active_keyword}**")
-    else:
-        st.caption(t["sidebar_updates"])
-
-    # 2. 执行关联查询（传入提取出的关键词）
-    updates = fetch_eu_updates(keywords=active_keyword)
-    
-    # 回退机制：如果关键词检索不到内容，则显示最新的通用法律动态，防止界面留白
-    if not updates and active_keyword:
-        updates = fetch_eu_updates(keywords=None)
-
-    if updates:
-        for item in updates:
-            with st.container(border=True):
-                st.error(f"**Update: {item['date']['value']}**")
-                st.markdown(f"**{item['title']['value']}**")
-                st.link_button("View CELEX", f"https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:{item['celex']['value']}")
-    else:
-        st.write("Monitoring Official Journal...")
-    
-    st.divider()
-    st.info(f"{t['sidebar_agent']}\n\n{t['sidebar_policy']}")
 
 # 核心控制台
 st.markdown("<br><br>", unsafe_allow_html=True)
 _, mid, _ = st.columns([1, 4, 1])
 with mid:
     st.markdown(f"<h1 style='text-align:center;'>{t['title']}</h1>", unsafe_allow_html=True)
+    # 适用法域副标题 (极简学术风)
     st.markdown(f"<p style='text-align:center; color:#888888; font-size:1.1em; margin-top:-10px; margin-bottom:30px;'>{t['framework_notice']}</p>", unsafe_allow_html=True)
+    
     url_input = st.text_input(t["input_label"], placeholder="https://...", key="persist_url", label_visibility="collapsed")
     if st.button(t["btn_scan"], type="primary", use_container_width=True):
         if url_input:
@@ -300,7 +281,7 @@ with mid:
             with cols[i]:
                 st.button(f"📊 {item['score']}pts\n{urlparse(item['url']).netloc}", key=f"hist_{i}", use_container_width=True)
 
-# ================= 5. 深度审计结果面板 (原样保留) =================
+# ================= 5. 深度审计结果面板 =================
 if st.session_state['scan_result']:
     r = st.session_state['scan_result']
     st.markdown("---")
