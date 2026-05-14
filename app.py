@@ -337,8 +337,19 @@ def run_academic_audit(url):
 
 # ================= 4. 交互 UI 布局 =================
 
-_, lang_col = st.columns([5, 1])
+# 稍微调整右侧列的宽度比例，给平铺的按钮留出空间
+_, lang_col = st.columns([7, 3]) 
+
 with lang_col:
+    # 使用 st.radio 并设置 horizontal=True，彻底杜绝键盘输入
+    lang = st.radio(
+        "语言选择", 
+        ["English", "中文", "Deutsch"], 
+        index=0, 
+        key="persist_lang", 
+        horizontal=True, 
+        label_visibility="collapsed"
+    )
     lang = st.selectbox("English / 中文 / Deutsch", ["English", "中文", "Deutsch"], index=0, key="persist_lang")
 t = ui_texts[lang]
 
