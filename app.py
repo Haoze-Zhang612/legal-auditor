@@ -332,27 +332,48 @@ t = ui_texts[lang]
 
 # --- 【新插入：侧边栏联动逻辑】 ---
 with st.sidebar:
-    st.markdown(t["sidebar_title"])
-    active_kw = None
-    if st.session_state['scan_result']:
-        r_now = st.session_state['scan_result']
-        # 动态捕捉关键词
-        active_kw = "Artificial Intelligence" if r_now['tdm']['ai_bots'] else "Data Protection"
-        st.info(f"📍 Keyword: {active_kw}")
+    st.markdown("## 🇪🇺 欧盟法律实时流")
     
-    updates = fetch_eu_legal_links(keywords=active_kw)
-    if updates:
-        for item in updates:
-            with st.container(border=True):
-                st.error(f"📅 {item['date']['value']}")
-                st.markdown(f"**{item['title']['value']}**")
-                celex_link = f"https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:{item['celex']['value']}"
-                st.link_button(t["view_link"], celex_link)
-    else:
-        st.write("Monitoring Official Journal...")
+    # --- 目标 4: 动态搜索关键词 (允许用户手动干预) ---
+    st.markdown("**检索设置 / Fetch Settings**")
+    user_kw = st.text_input("🔍 手动搜索 (Manual Search)", placeholder="输入关键词, 例: Copyright", label_visibility="collapsed")
+    
+    # 确定最终关键词 (手动输入 > 审计动态推荐 > 默认值)
+    active_kw = None
+    if st.session_state.get('scan_result'):
+        r_now = st.session_state['scan_result']
+        active_kw = "AI Act" if r_now['tdm']['ai_bots'] else "Data Protection"
+    
+    final_kw = user_kw if user_kw else active_kw
+    
+    if final_kw:
+        st.info(f"📍 当前追踪: **{final_kw}**")
+    
     st.divider()
-    st.info("Verified by: **Compliance Audit Agent**")
 
+    # 执行抓取 (目标 1 & 2 参数在这里传入)
+    updates = fetch_eu_legal_links(keywords=final_kw, limit=15, start_date="2020-01-01")
+    
+    # --- 目标 1: 增加内部滚动条容器 ---
+    if updates:
+        st.caption(f"共发现 {len(updates)} 份相关法律文件 (自 2020 年起)")
+        
+        # 使用 height 参数创建一个固定高度的滚动容器 (Streamlit 1.30+ 特性)
+        with st.container(height=500, border=False): 
+            for item in updates:
+                with st.container(border=True):
+                    # 使用 caption 优化日期的视觉层级
+                    st.caption(f"📅 {item['date']['value']}") 
+                    st.markdown(f"<p style='font-size:14px; font-weight:bold;'>{item['title']['value']}</p>", unsafe_allow_html=True)
+                    
+                    celex_link = f"https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:{item['celex']['value']}"
+                    # 使用简洁的超链接代替巨大的按钮
+                    st.markdown(f"[🔗 查看全文 (EUR-Lex)]({celex_link})")
+    else:
+        st.info("⏳ 正在监控官方公报...")
+        
+    st.divider()
+    st.caption("认证系统: **合规审计 Agent**")
 # 核心控制台
 st.markdown("<br><br>", unsafe_allow_html=True)
 _, mid, _ = st.columns([1, 4, 1])
