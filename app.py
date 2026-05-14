@@ -337,9 +337,10 @@ def run_academic_audit(url):
 
 # ================= 4. 交互 UI 布局 =================
 
-_, lang_col = st.columns([7, 3])
+_, lang_col = st.columns([6, 1])
 with lang_col:
-    lang = st.radio("Language", ["English", "中文", "Deutsch"], index=0, key="persist_lang", horizontal=True, label_visibility="collapsed")
+    # 移除了 horizontal=True，恢复默认的竖向排列
+    lang = st.radio("Language", ["English", "中文", "Deutsch"], index=0, key="persist_lang", label_visibility="collapsed")
 t = ui_texts[lang]
 
 # --- 【新插入：侧边栏联动逻辑】 ---
