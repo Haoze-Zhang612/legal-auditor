@@ -12,8 +12,8 @@ import time
 # ================= 1. 页面与学术状态配置 =================
 st.set_page_config(page_title="TDM & GDPR Compliance Auditor", page_icon="⚖️", layout="wide")
 
-# ================= 2. 欧盟合规监控引擎 (SPARQL) =================
-@st.cache_data(ttl=86400)  # 每天自动刷新一次
+# ================= 【新插入：后端监控函数】 =================
+@st.cache_data(ttl=86400)
 def fetch_eu_updates():
     endpoint = "https://publications.europa.eu/webapi/rdf/sparql"
     query = """
@@ -30,15 +30,11 @@ def fetch_eu_updates():
     }
     ORDER BY DESC(?date) LIMIT 5
     """
-    headers = {
-        'Accept': 'application/sparql-results+json',
-        'User-Agent': 'Haoze-Legal-Tech-Audit-Bot/1.0 (Contact: your_email@fau.de; Purpose: Academic Research)'
-    }
+    headers = {'Accept': 'application/sparql-results+json', 'User-Agent': 'Haoze-Legal-Tech-Audit-Bot/1.0 (Contact: your_email@fau.de)'}
     try:
         r = requests.get(endpoint, params={'query': query}, headers=headers, timeout=10)
         return r.json()['results']['bindings'] if r.status_code == 200 else []
-    except:
-        return []
+    except: return []
 
 # 将原有的隐藏 CSS 和 新的背景图 CSS 合并成一个函数
 def set_page_bg_and_hide_elements(image_file):
@@ -48,15 +44,18 @@ def set_page_bg_and_hide_elements(image_file):
         
         css = f"""
         <style>
+        /* 1. 隐藏 Streamlit 原生元素 */
         #MainMenu {{visibility: hidden;}}
         header {{visibility: hidden;}}
         .stDeployButton {{display: none;}}
         footer {{visibility: hidden;}}
         
+        /* 2. 核心修复：把 Streamlit 默认的实心背景变透明，让底层露出来 */
         .stApp {{
             background-color: transparent !important;
         }}
         
+        /* 3. 设置带透明度的背景暗纹图 */
         .stApp::before {{
             content: "";
             position: fixed;
@@ -72,6 +71,7 @@ def set_page_bg_and_hide_elements(image_file):
             pointer-events: none;
         }}
         
+        /* 4. 💻 桌面端核心阅读区 */
         .block-container {{
             background-color: var(--background-color); 
             border-radius: 15px; 
@@ -81,9 +81,24 @@ def set_page_bg_and_hide_elements(image_file):
             max-width: 1000px; 
         }}
 
+        /* 5. 📱 手机与平板适配 */
+        @media (max-width: 768px) {{
+            .block-container {{
+                padding: 1.5rem 1rem !important; 
+                border-radius: 8px !important; 
+            }}
+        }}
+
+        /* 6. 强制语言选择器的标题单行显示 */
+        div[data-testid="stSelectbox"] label p {{
+            white-space: nowrap !important;
+        }}
+
+        /* 7. 🚀 新增：强制正文、副标题变成加粗黑体 */
         .stMarkdown p, div[data-testid="stCaptionContainer"] p, .stAlert p {{
             font-family: "Microsoft YaHei", "SimHei", sans-serif !important;
             font-weight: bold !important;
+            color: var(--text-color) !important;
         }}
         </style>
         """
@@ -93,28 +108,6 @@ def set_page_bg_and_hide_elements(image_file):
 
 set_page_bg_and_hide_elements("bg.jpg")
 
-# ================= 3. 侧边栏 UI 与 实时监控展示 =================
-with st.sidebar:
-    st.markdown("## 🇪🇺 EU Regulatory Feed")
-    st.caption("Real-time monitoring of EU Official Journal")
-    
-    # 执行抓取逻辑
-    updates = fetch_eu_updates()
-    if updates:
-        for update in updates:
-            # 使用 error 样式作为高亮预警
-            st.error(f"**Update: {update['date']['value']}**")
-            st.markdown(f"**{update['title']['value']}**")
-            celex = update['celex']['value']
-            url = f"https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:{celex}"
-            st.link_button(f"View CELEX: {celex}", url)
-            st.divider()
-    else:
-        st.write("No new updates found.")
-        
-    st.info("Verified by: **Haoze Legal-Tech Agent**\n\nCompliant with EU Open Data Policy.")
-
-# ================= 4. 系统状态初始化 =================
 if 'scan_result' not in st.session_state:
     st.session_state['scan_result'] = None
 if 'history' not in st.session_state:
@@ -122,7 +115,7 @@ if 'history' not in st.session_state:
 if 'ai_memo' not in st.session_state:
     st.session_state['ai_memo'] = None
 
-# ================= 5. 国际化与专注法域词库 =================
+# ================= 2. 国际化与专注法域词库 =================
 ui_texts = {
     "English": {
         "title": "⚖️ Legal Tech Auditor",
@@ -207,7 +200,7 @@ ui_texts = {
     }
 }
 
-# ================= 6. 高级审计逻辑 =================
+# ================= 3. 高级审计逻辑 (欧盟/德国专属) =================
 def get_ai_config(key):
     if key.startswith("gsk_"): return "Groq", "https://api.groq.com/openai/v1", "llama-3.3-70b-versatile"
     if key.startswith("AIza"): return "Gemini", "https://generativelanguage.googleapis.com/v1beta/openai/", "gemini-1.5-flash"
@@ -220,7 +213,6 @@ def run_academic_audit(url):
         res = requests.get(url, headers=headers, timeout=10)
         soup = BeautifulSoup(res.text, 'html.parser')
         domain = f"{urlparse(url).scheme}://{urlparse(url).netloc}"
-        
         ai_bots_blocked = []
         general_bots_blocked = False
         try:
@@ -228,60 +220,74 @@ def run_academic_audit(url):
             ai_bots_blocked = [b for b in ['gptbot', 'ccbot', 'anthropic-ai', 'claudebot'] if b in r_txt and 'disallow' in r_txt]
             general_bots_blocked = '*' in r_txt and 'disallow: /' in r_txt
         except: pass
-        
         meta = soup.find('meta', attrs={'name': re.compile(r'tdm-reservation', re.I)})
-        
         legal_url, legal_text = None, ""
         adm_flag = False
-        weights = {'privacy':15, 'datenschutz':15, 'impressum':10}
-        
+        weights = {'privacy':15, 'datenschutz':15, 'impressum':10, 'parking':-30}
         for a in soup.find_all('a', href=True):
             score = sum(v for k, v in weights.items() if k in a.get_text().lower() or k in a['href'].lower())
             if score > 10:
                 legal_url = urljoin(url, a['href'])
                 break 
-                
         if legal_url:
             l_res = requests.get(legal_url, headers=headers, timeout=5)
             legal_text = BeautifulSoup(l_res.text, 'html.parser').get_text()[:4000]
-            adm_flag = any(kw in legal_text.lower() for kw in ['automated decision', 'profiling', 'automatisierte entscheidung'])
-
+            adm_flag = any(kw in legal_text.lower() for kw in ['automated decision', 'profiling', 'automatisierte entscheidung', '自动化决策'])
         score = 20
         if ai_bots_blocked or meta: score += 30
+        elif general_bots_blocked: score += 10
         if adm_flag: score += 15
         if legal_url: score += 35
-
-        return {
-            "url": url, 
-            "tdm": {"ai_bots": ai_bots_blocked, "general_bots": general_bots_blocked},
-            "privacy": {"policy_url": legal_url, "adm_declared": adm_flag},
-            "score": score, "text": legal_text if legal_text else soup.get_text()[:3000]
-        }
+        return {"url": url, "tdm": {"meta": meta is not None, "ai_bots": ai_bots_blocked, "general_bots": general_bots_blocked}, "privacy": {"policy_url": legal_url, "adm_declared": adm_flag}, "score": score, "text": legal_text if legal_text else soup.get_text()[:3000]}
     except Exception as e:
         st.error(f"Audit Failed: {e}")
         return None
 
-# ================= 7. 交互 UI 布局 =================
+# ================= 4. 交互 UI 布局 =================
+
 _, lang_col = st.columns([5, 1])
 with lang_col:
-    lang = st.selectbox("Language", ["English", "中文", "Deutsch"], index=0)
+    lang = st.selectbox("English / 中文 / Deutsch", ["English", "中文", "Deutsch"], index=0, key="persist_lang")
 t = ui_texts[lang]
 
-st.markdown("<br>", unsafe_allow_html=True)
+# ================= 【新插入：侧边栏 UI】 =================
+with st.sidebar:
+    st.markdown("## 🇪🇺 EU Regulatory Feed")
+    st.caption("Live Updates from Official Journal")
+    updates = fetch_eu_updates()
+    if updates:
+        for item in updates:
+            with st.container(border=True):
+                st.error(f"**Update: {item['date']['value']}**")
+                st.markdown(f"**{item['title']['value']}**")
+                st.link_button("View CELEX", f"https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:{item['celex']['value']}")
+    st.divider()
+    st.info(f"Bot Identity: **Haoze Legal Agent**\n\nCompliant with EU Open Data Policy.")
+
+# 核心控制台
+st.markdown("<br><br>", unsafe_allow_html=True)
 _, mid, _ = st.columns([1, 4, 1])
 with mid:
     st.markdown(f"<h1 style='text-align:center;'>{t['title']}</h1>", unsafe_allow_html=True)
-    st.markdown(f"<p style='text-align:center; color:#888888;'>{t['framework_notice']}</p>", unsafe_allow_html=True)
-    
-    url_input = st.text_input(t["input_label"], placeholder="https://...", label_visibility="collapsed")
+    st.markdown(f"<p style='text-align:center; color:#888888; font-size:1.1em; margin-top:-10px; margin-bottom:30px;'>{t['framework_notice']}</p>", unsafe_allow_html=True)
+    url_input = st.text_input(t["input_label"], placeholder="https://...", key="persist_url", label_visibility="collapsed")
     if st.button(t["btn_scan"], type="primary", use_container_width=True):
         if url_input:
             result = run_academic_audit(url_input)
             if result:
                 st.session_state['scan_result'] = result
+                st.session_state['ai_memo'] = None 
+                st.session_state['history'].insert(0, {"url": url_input, "score": result['score'], "time": datetime.datetime.now().strftime("%H:%M")})
                 st.rerun()
 
-# ================= 8. 审计结果展示 =================
+    if st.session_state['history']:
+        st.markdown(f"<div style='margin-top:20px;'><strong>{t['history_label']}</strong></div>", unsafe_allow_html=True)
+        cols = st.columns(min(len(st.session_state['history']), 4))
+        for i, item in enumerate(st.session_state['history'][:4]):
+            with cols[i]:
+                st.button(f"📊 {item['score']}pts\n{urlparse(item['url']).netloc}", key=f"hist_{i}", use_container_width=True)
+
+# ================= 5. 深度审计结果面板 =================
 if st.session_state['scan_result']:
     r = st.session_state['scan_result']
     st.markdown("---")
@@ -289,29 +295,67 @@ if st.session_state['scan_result']:
 
     with res_l:
         st.subheader(t["score_title"])
-        fig = go.Figure(go.Indicator(mode="gauge+number", value=r["score"]))
-        fig.update_layout(height=200, paper_bgcolor='rgba(0,0,0,0)')
+        fig = go.Figure(go.Indicator(mode="gauge+number", value=r["score"], gauge={'bar': {'color': "#1f77b4"}}))
+        fig.update_layout(height=180, margin=dict(l=10, r=10, t=10, b=10), paper_bgcolor='rgba(0,0,0,0)')
         st.plotly_chart(fig, use_container_width=True)
 
         st.subheader(t["report_title"])
         with st.container(border=True):
             st.markdown(f"**{t['tdm_layer']}**")
             if r["tdm"]["ai_bots"]: st.success(f"{t['tdm_success']}{', '.join(r['tdm']['ai_bots'])}")
-            else: st.error(t["tdm_fail"])
+            elif r["tdm"]["general_bots"]: st.warning(f"{t['tdm_grey']}")
+            else: st.error(f"{t['tdm_fail']}")
+        
+        with st.container(border=True):
+            st.markdown(f"**{t['adm_layer']}**")
+            if r["privacy"]["adm_declared"]: st.success(f"{t['adm_success']}")
+            else: st.warning(f"{t['adm_fail']}")
+            
+        with st.container(border=True):
+            st.markdown(f"**{t['gdpr_layer']}**")
+            if r["privacy"]["policy_url"]: st.success(f"{t['policy_success']}[Link]({r['privacy']['policy_url']})")
+            else: st.error(f"{t['policy_fail']}")
+
+        with st.expander("💾 View Structured Data (JSON)", expanded=False):
+            st.json({k: v for k, v in r.items() if k != 'text'})
 
     with res_r:
         st.markdown(f"#### {t['ai_header']}")
-        api_key = st.text_input("API Key", type="password", placeholder=t["key_placeholder"])
-        if st.button(t["ai_btn"], use_container_width=True):
-            if api_key:
-                with st.spinner("Analyzing..."):
-                    vendor, b_url, m_name = get_ai_config(api_key)
-                    client = OpenAI(api_key=api_key, base_url=b_url)
-                    prompt = f"Audit {r['url']} under EU law. TDM: {r['tdm']['ai_bots']}. Text: {r['text'][:1000]}"
-                    response = client.chat.completions.create(model=m_name, messages=[{"role": "user", "content": prompt}])
-                    st.session_state['ai_memo'] = (vendor, response.choices[0].message.content)
+        k_col, b_col = st.columns([2, 1])
+        with k_col:
+            api_key = st.text_input("API Key", type="password", placeholder=t["key_placeholder"], key="persist_api_key", label_visibility="collapsed")
+        with b_col:
+            if st.button(t["ai_btn"], use_container_width=True):
+                if not api_key: st.warning("Key needed")
+                else:
+                    with st.spinner("Executing Doctrinal Analysis..."):
+                        try:
+                            vendor, b_url, m_name = get_ai_config(api_key)
+                            client = OpenAI(api_key=api_key, base_url=b_url)
+                            prompt = f"""
+                            Task: Conduct a legal audit for {r['url']} under the EU Acquis (AI Act Art. 53, GDPR, UrhG § 44b).
+                            Data: TDM AI Block({r['tdm']['ai_bots']}), ADM Declared({r['privacy']['adm_declared']}).
+                            Text snippet: {r['text'][:1500]}
+                            
+                            Constraints: NO self-introduction. Language: {lang}. No Chinese in EN/DE mode.
+                            Structure:
+                            [{t['ai_tag_status']}]: Contextualize findings under EU/DE law.
+                            [{t['ai_tag_risk']}]: Highlight frictions regarding Art. 53 (TDM) or Art. 22 (ADM).
+                            [{t['ai_tag_suggest']}]: Academic/Legal suggestions.
+                            """
+                            response = client.chat.completions.create(
+                                model=m_name,
+                                messages=[{"role": "system", "content": f"You are an EU legal scholar. Output strictly in {lang}."}, {"role": "user", "content": prompt}],
+                                temperature=0.2
+                            )
+                            st.session_state['ai_memo'] = (vendor, response.choices[0].message.content)
+                        except Exception as e: st.error(f"Error: {e}")
         
         if st.session_state['ai_memo']:
-            st.info(st.session_state['ai_memo'][1])
+            vendor, content = st.session_state['ai_memo']
+            st.markdown(f"**{vendor}{t['ai_analysis_title']}**")
+            st.info(content)
 
-st.markdown("<br><hr><center><small style='opacity:0.6;'>" + t["disclaimer"] + "</small></center>", unsafe_allow_html=True)
+# 页脚免责声明
+st.markdown("<br><br><br>", unsafe_allow_html=True)
+st.markdown(f"<hr><center><small style='opacity:0.6;'>{t['disclaimer']}</small></center>", unsafe_allow_html=True)
