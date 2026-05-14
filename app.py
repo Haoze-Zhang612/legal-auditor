@@ -11,10 +11,11 @@ import base64
 # ================= 1. 页面与学术状态配置 =================
 st.set_page_config(page_title="TDM & GDPR Compliance Auditor", page_icon="⚖️", layout="wide")
 
-# --- 【新增：自动化法律爬虫引擎】 ---
+# --- 【自动化法律爬虫引擎：已放宽日期以确保数据产出】 ---
 @st.cache_data(ttl=3600)
 def fetch_eu_legal_links(keywords=None):
     endpoint = "https://publications.europa.eu/webapi/rdf/sparql"
+    # 动态构建关键词过滤逻辑
     kf = f"FILTER(regex(str(?title), '{keywords}', 'i'))" if keywords else ""
     query = f"""
     PREFIX cdm: <http://publications.europa.eu/ontology/cdm#>
@@ -27,15 +28,17 @@ def fetch_eu_legal_links(keywords=None):
       ?work dc:title ?title .
       ?work cdm:resource_legal_id_celex ?celex .
       FILTER(lang(?title) = "en")
-      FILTER(?date >= "2024-01-01"^^xsd:date)
+      FILTER(?date >= "2020-01-01"^^xsd:date)
       {kf}
     }}
     ORDER BY DESC(?date) LIMIT 5
     """
     try:
+        # 发送请求，包含必要的 headers 以符合欧盟开放数据政策
         r = requests.get(endpoint, params={'query': query}, headers={'Accept': 'application/sparql-results+json'}, timeout=10)
         return r.json()['results']['bindings'] if r.status_code == 200 else []
-    except: return []
+    except: 
+        return []
 
 # 将原有的隐藏 CSS 和 新的背景图 CSS 合并成一个函数
 def set_page_bg_and_hide_elements(image_file):
