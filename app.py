@@ -350,8 +350,6 @@ with lang_col:
         horizontal=True, 
         label_visibility="collapsed"
     )
-    lang = st.selectbox("English / 中文 / Deutsch", ["English", "中文", "Deutsch"], index=0, key="persist_lang")
-t = ui_texts[lang]
 
 # --- 【新插入：侧边栏联动逻辑】 ---
 with st.sidebar:
