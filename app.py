@@ -7,74 +7,54 @@ from openai import OpenAI
 import re
 import datetime
 import base64
+import ipaddress
 
 # ================= 1. 页面与学术状态配置 =================
 st.set_page_config(page_title="TDM & GDPR Compliance Auditor", page_icon="⚖️", layout="wide")
 
-# --- 【新增：自动化法律爬虫引擎】 ---
-# --- 【已修复：双重保险法律爬虫引擎】 ---
-# --- 【新增：自动化法律爬虫引擎】 ---
-# --- 【已修复：双重保险法律爬虫引擎】 ---
-import ssl
-import urllib.request
-import re
-import streamlit as st
-
 @st.cache_data(ttl=3600)
 def fetch_eu_legal_links(keywords=None, limit=15, start_date="2020-01-01"):
     """
-    升级版爬虫引擎：支持多源、更长时间跨度、SSL绕过、更大抓取量，并按日期降序排序
+    Curated baseline references.
+    精确模式下不再把 mock RSS 伪装成实时 EUR-Lex 结果。
     """
-    # 目标 5: 解决校园/内网 SSL 证书拦截问题
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-    
-    results = []
-    
-    # 目标 3: 多源抓取 (示例：EUR-Lex 的真实搜索查询流，可以拓展 L系列、C系列等)
-    feed_sources = [
-        "https://eur-lex.europa.eu/rss_source_1", # 模拟源 1
-        "https://eur-lex.europa.eu/rss_source_2"  # 模拟源 2
+    references = [
+        {
+            "date": "2024-07-12",
+            "title": "Regulation (EU) 2024/1689 (Artificial Intelligence Act)",
+            "celex": "32024R1689",
+            "keywords": ["ai", "artificial intelligence", "ai act", "data"]
+        },
+        {
+            "date": "2019-05-17",
+            "title": "Directive (EU) 2019/790 on copyright and related rights in the Digital Single Market",
+            "celex": "32019L0790",
+            "keywords": ["copyright", "tdm", "text and data mining", "data"]
+        },
+        {
+            "date": "2016-05-04",
+            "title": "Regulation (EU) 2016/679 (General Data Protection Regulation)",
+            "celex": "32016R0679",
+            "keywords": ["gdpr", "data protection", "privacy", "data"]
+        }
     ]
-    
-    try:
-        # 动态 Mock 模拟从上述多源抓取的结果
-        # 在真实部署时，使用 urllib.request.urlopen(url, context=ctx) 替换这部分
-        mock_xml = f"""
-        <item><title>Regulation (EU) 2024/1689 (AI Act)</title><link>CELEX:32024R1689</link><pubDate>2024-07-12</pubDate></item>
-        <item><title>Directive (EU) 2019/790 (Copyright in DSM - TDM Exception)</title><link>CELEX:32019L0790</link><pubDate>2019-05-17</pubDate></item>
-        <item><title>General Data Protection Regulation (GDPR)</title><link>CELEX:32016R0679</link><pubDate>2016-04-27</pubDate></item>
-        <item><title>Draft: Standard Contractual Clauses for AI Data</title><link>CELEX:52025DC0112</link><pubDate>2025-02-14</pubDate></item>
-        <item><title>Council Decision on Data Flows</title><link>CELEX:32023D1011</link><pubDate>2023-11-05</pubDate></item>
-        <item><title>Judgment of the Court (Data Scraping)</title><link>CELEX:62021CJ0252</link><pubDate>2023-07-04</pubDate></item>
-        """
-        
-        items = re.findall(r'<item>(.*?)</item>', mock_xml, re.S)
-        for entry in items:
-            title = re.search(r'<title>(.*?)</title>', entry).group(1)
-            celex = re.search(r'<link>(.*?)</link>', entry).group(1)
-            date = re.search(r'<pubDate>(.*?)</pubDate>', entry).group(1)
-            
-            # 目标 2: 放宽日期过滤 (只保留 start_date 之后的文件)
-            if date >= start_date:
-                # 简单关键词过滤
-                if not keywords or keywords.lower() in title.lower() or "ai" in title.lower() or "data" in title.lower() or "copyright" in title.lower():
-                    results.append({
-                        "date": {"value": date},
-                        "title": {"value": title},
-                        "celex": {"value": celex.replace("CELEX:", "")}
-                    })
-        
-        # 🌟 新增：在这里按日期降序排序 (最新的文件排在最上面)
-        results.sort(key=lambda x: x['date']['value'], reverse=True)
-                    
-        # 目标 1: 修改 LIMIT 参数 (截取排序后的前 limit 条)
-        return results[:limit]
-        
-    except Exception as e:
-        st.sidebar.error(f"抓取中断，启用本地缓存: {e}")
-        return []
+
+    query = (keywords or "").strip().lower()
+    results = []
+    for item in references:
+        if item["date"] < start_date:
+            continue
+        haystack = " ".join([item["title"], *item["keywords"]]).lower()
+        if query and query not in haystack:
+            continue
+        results.append({
+            "date": {"value": item["date"]},
+            "title": {"value": item["title"]},
+            "celex": {"value": item["celex"]}
+        })
+
+    results.sort(key=lambda x: x["date"]["value"], reverse=True)
+    return results[:limit]
 # 将原有的隐藏 CSS 和 新的背景图 CSS 合并成一个函数
 def set_page_bg_and_hide_elements(image_file):
     try:
@@ -187,14 +167,14 @@ ui_texts = {
         "ai_tag_status": "Current Doctrinal Status",
         "ai_tag_risk": "Compliance Friction",
         "ai_tag_suggest": "Strategic Mitigation",
-        "sidebar_title": "## 🇪🇺 Live Regulatory Feed",
+        "sidebar_title": "## 🇪🇺 Regulatory Reference Feed",
         "view_link": "View Full Text (EUR-Lex)",
         "fetch_settings": "**Fetch Settings**",
         "search_placeholder": "Enter keyword (English only, e.g., Copyright)",
         "english_hint": "💡 *Note: Please use English keywords for EUR-Lex search.*",
         "tracking": "📍 Currently Tracking: ",
-        "results_found": "Found {} relevant legal documents (since 2020)",
-        "monitoring": "⏳ Monitoring Official Journal...",
+        "results_found": "Found {} verified reference documents",
+        "monitoring": "⏳ No matching verified reference in local baseline.",
         "verified": "Verified by: **Compliance Audit Agent**",
         "topic_ai": "AI Act",
         "topic_data": "Data Protection"
@@ -225,14 +205,14 @@ ui_texts = {
         "ai_tag_status": "合规现状",
         "ai_tag_risk": "核心法理摩擦",
         "ai_tag_suggest": "合规改进建议",
-        "sidebar_title": "## 🇪🇺 欧盟法律实时流",
+        "sidebar_title": "## 🇪🇺 欧盟法规参考源",
         "view_link": "查看全文 (EUR-Lex)",
         "fetch_settings": "**检索设置 / Fetch Settings**",
         "search_placeholder": "🔍 输入关键词 (仅限英文, 例: Copyright)",
         "english_hint": "💡 *提示: EUR-Lex 数据库检索请使用英文关键词。*",
         "tracking": "📍 当前追踪: ",
-        "results_found": "共发现 {} 份相关法律文件 (自 2020 年起)",
-        "monitoring": "⏳ 正在监控官方公报...",
+        "results_found": "共发现 {} 份已核验参考文件",
+        "monitoring": "⏳ 本地核验基线中暂无匹配文件。",
         "verified": "认证系统: **合规审计 Agent**",
         "topic_ai": "AI Act",
         "topic_data": "Data Protection"
@@ -263,14 +243,14 @@ ui_texts = {
         "ai_tag_status": "Doktrinärer Status",
         "ai_tag_risk": "Compliance-Friktion",
         "ai_tag_suggest": "Strategische Minderung",
-        "sidebar_title": "## 🇪🇺 Regulierungs-Feed",
+        "sidebar_title": "## 🇪🇺 Regulierungsreferenzen",
         "view_link": "Volltext anzeigen (EUR-Lex)",
         "fetch_settings": "**Abrufeinstellungen**",
         "search_placeholder": "🔍 Suchbegriff (nur auf Englisch, z.B. Copyright)",
         "english_hint": "💡 *Hinweis: Bitte englische Suchbegriffe für EUR-Lex verwenden.*",
         "tracking": "📍 Aktuelles Thema: ",
-        "results_found": "{} relevante Rechtsdokumente gefunden (seit 2020)",
-        "monitoring": "⏳ Überwache Amtsblatt...",
+        "results_found": "{} geprüfte Referenzdokumente gefunden",
+        "monitoring": "⏳ Keine passende geprüfte Referenz in der lokalen Basis.",
         "verified": "Verifiziert durch: **Compliance Audit Agent**",
         "topic_ai": "AI Act",
         "topic_data": "Data Protection"
@@ -283,63 +263,271 @@ def get_ai_config(key):
     if "deepseek" in key.lower() or (key.startswith("sk-") and len(key) < 45): return "DeepSeek", "https://api.deepseek.com", "deepseek-chat"
     return "OpenAI", "https://api.openai.com/v1", "gpt-4o-mini"
 
-def run_academic_audit(url):
-    # 🌟 新增：智能处理 URL，自动去除前后空格并补全协议头
-    url = url.strip()
+def normalize_url(raw_url):
+    url = raw_url.strip()
     if not url.startswith(('http://', 'https://')):
         url = 'https://' + url
-        
-    # 🌟 优化：使用更完整的现代浏览器 User-Agent，降低被防爬虫系统拦截的概率
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        raise ValueError("Please enter a valid HTTP(S) URL.")
+    return url
+
+def is_public_host(url):
+    host = urlparse(url).hostname
+    if not host:
+        return False
+    if host in ("localhost",):
+        return False
+    try:
+        ip = ipaddress.ip_address(host)
+        return not (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved)
+    except ValueError:
+        return True
+
+def site_origin(url):
+    parsed = urlparse(url)
+    return f"{parsed.scheme}://{parsed.netloc}"
+
+def normalized_domain(url):
+    return urlparse(url).netloc.lower().removeprefix("www.")
+
+def fetch_html(url, headers, timeout=10):
+    if not is_public_host(url):
+        raise ValueError("Private, localhost, or reserved addresses are blocked for safer auditing.")
+    response = requests.get(url, headers=headers, timeout=timeout, allow_redirects=True)
+    response.raise_for_status()
+    return response.url, BeautifulSoup(response.text, 'html.parser'), response.text
+
+def parse_robots_groups(robots_text):
+    groups = []
+    agents = []
+    rules = []
+
+    def flush_group():
+        if agents or rules:
+            groups.append({"agents": agents.copy(), "rules": rules.copy()})
+
+    for raw_line in robots_text.splitlines():
+        line = raw_line.split("#", 1)[0].strip()
+        if not line or ":" not in line:
+            continue
+
+        field, value = [part.strip() for part in line.split(":", 1)]
+        field = field.lower()
+        value = value.strip()
+
+        if field == "user-agent":
+            if rules:
+                flush_group()
+                agents, rules = [], []
+            agents.append(value.lower())
+        elif field in ("allow", "disallow") and agents:
+            rules.append((field, value))
+
+    flush_group()
+    return groups
+
+def path_is_full_block(path):
+    normalized = path.strip().lower()
+    return normalized in ("/", "/*")
+
+def audit_robots(domain, headers):
+    ai_bots = ['gptbot', 'ccbot', 'google-extended', 'anthropic-ai', 'claudebot', 'omgilibot']
+    try:
+        response = requests.get(f"{domain}/robots.txt", headers=headers, timeout=5)
+        response.raise_for_status()
+    except requests.RequestException:
+        return {"ai_bots": [], "general_bots": False, "evidence": []}
+
+    groups = parse_robots_groups(response.text)
+    blocked_ai = set()
+    general_bots_blocked = False
+    evidence = []
+
+    for group in groups:
+        agents = group["agents"]
+        full_disallows = [value for field, value in group["rules"] if field == "disallow" and path_is_full_block(value)]
+        if not full_disallows:
+            continue
+
+        if "*" in agents:
+            general_bots_blocked = True
+            evidence.append("User-agent: * + Disallow: /")
+
+        for bot in ai_bots:
+            if bot in agents:
+                blocked_ai.add(bot)
+                evidence.append(f"User-agent: {bot} + Disallow: {full_disallows[0]}")
+
+    return {
+        "ai_bots": sorted(blocked_ai),
+        "general_bots": general_bots_blocked,
+        "evidence": evidence[:6]
+    }
+
+def detect_tdm_meta(soup):
+    metas = soup.find_all('meta', attrs={'name': re.compile(r'^tdm-reservation$', re.I)})
+    for meta in metas:
+        content = meta.get("content", "").strip().lower()
+        if content in ("1", "true", "yes"):
+            return True, f'<meta name="tdm-reservation" content="{content}">'
+    return False, None
+
+def split_clauses(text):
+    compact = re.sub(r"\s+", " ", text).strip().lower()
+    return re.split(r"(?<=[.!?。！？;；])\s+", compact)
+
+def detect_tdm_clause(text):
+    topics = [
+        "text and data mining", "tdm", "ai training", "artificial intelligence training",
+        "machine learning", "training data", "data mining", "scraping", "crawler",
+        "ki-training", "künstliche intelligenz", "nutzungsvorbehalt", "§ 44b", "urhg",
+        "人工智能训练", "ai训练", "数据挖掘", "机器学习", "爬取", "抓取"
+    ]
+    restrictions = [
+        "not permitted", "prohibited", "forbidden", "reserved", "opt-out",
+        "without permission", "may not", "must not", "no scraping",
+        "untersagt", "verboten", "vorbehalten", "nicht gestattet", "nicht erlaubt",
+        "ohne zustimmung", "widerspruch",
+        "禁止", "不得", "未经许可", "保留权利", "权利保留", "不同意"
+    ]
+
+    for clause in split_clauses(text):
+        if any(topic in clause for topic in topics) and any(term in clause for term in restrictions):
+            return True, clause[:350]
+    return False, None
+
+def find_policy_links(soup, base_url):
+    base_domain = normalized_domain(base_url)
+    candidates = []
+    weights = {
+        'privacy': 40, 'datenschutz': 40, 'data protection': 35,
+        'privacypolicy': 35, 'privacy-policy': 35,
+        'terms': 12, 'conditions': 12, 'legal': 10, 'impressum': 8,
+        '隐私': 40, '个人信息': 35, '数据保护': 35, '条款': 10
+    }
+
+    for a_tag in soup.find_all('a', href=True):
+        text = a_tag.get_text(" ", strip=True).lower()
+        href = a_tag["href"].strip()
+        full_url = urljoin(base_url, href)
+        parsed = urlparse(full_url)
+        if parsed.scheme not in ("http", "https"):
+            continue
+        if normalized_domain(full_url) != base_domain:
+            continue
+
+        haystack = f"{text} {href.lower()}"
+        score = sum(value for keyword, value in weights.items() if keyword in haystack)
+        if score > 0:
+            candidates.append((score, full_url))
+
+    candidates.sort(key=lambda item: item[0], reverse=True)
+    unique_links = []
+    for _, link in candidates:
+        if link not in unique_links:
+            unique_links.append(link)
+    return unique_links[:5]
+
+def detect_adm_clause(text):
+    terms = [
+        "automated decision", "automated decision-making", "solely automated",
+        "profiling", "article 22", "art. 22", "automatisierte entscheidung",
+        "automatisierte entscheidungsfindung", "profiling", "自动化决策", "用户画像"
+    ]
+    for clause in split_clauses(text):
+        if any(term in clause for term in terms):
+            return True, clause[:350]
+    return False, None
+
+def audit_policy_pages(soup, base_url, headers):
+    for policy_url in find_policy_links(soup, base_url):
+        try:
+            final_url, policy_soup, _ = fetch_html(policy_url, headers, timeout=6)
+        except (requests.RequestException, ValueError):
+            continue
+
+        policy_text = policy_soup.get_text(" ", strip=True)
+        adm_declared, adm_evidence = detect_adm_clause(policy_text)
+        tdm_declared, tdm_evidence = detect_tdm_clause(policy_text)
+        return {
+            "policy_url": final_url,
+            "policy_text": policy_text[:4000],
+            "adm_declared": adm_declared,
+            "adm_evidence": adm_evidence,
+            "tdm_clause": tdm_declared,
+            "tdm_evidence": tdm_evidence
+        }
+
+    return {
+        "policy_url": None,
+        "policy_text": "",
+        "adm_declared": False,
+        "adm_evidence": None,
+        "tdm_clause": False,
+        "tdm_evidence": None
+    }
+
+def calculate_audit_score(tdm, privacy):
+    score = 0
+    if tdm["meta"]:
+        score += 35
+    if tdm["ai_bots"]:
+        score += 35
+    elif tdm["general_bots"]:
+        score += 10
+    if tdm.get("natural_language"):
+        score += 10
+    if privacy["policy_url"]:
+        score += 15
+    if privacy["adm_declared"]:
+        score += 5
+    return min(score, 100)
+
+def run_academic_audit(url):
+    url = normalize_url(url)
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.8,de;q=0.6'
+    }
     
     try:
-        res = requests.get(url, headers=headers, timeout=10)
-        soup = BeautifulSoup(res.text, 'html.parser')
-        # 这里使用的 url 已经是经过上面修复过带有协议头的安全 url 了
-        domain = f"{urlparse(url).scheme}://{urlparse(url).netloc}"
-        
-        # 3.1 细粒度 TDM 机器可读性探测
-        ai_bots_blocked = []
-        general_bots_blocked = False
-        try:
-            r_txt = requests.get(f"{domain}/robots.txt", timeout=5).text.lower()
-            ai_bots_blocked = [b for b in ['gptbot', 'ccbot', 'anthropic-ai', 'claudebot'] if b in r_txt and 'disallow' in r_txt]
-            general_bots_blocked = '*' in r_txt and 'disallow: /' in r_txt
-        except: pass
-        
-        meta = soup.find('meta', attrs={'name': re.compile(r'tdm-reservation', re.I)})
-        
-        # 3.2 隐私与 ADM (自动化决策) 定向嗅探
-        legal_url, legal_text = None, ""
-        adm_flag = False
-        weights = {'privacy':15, 'datenschutz':15, 'impressum':10, 'parking':-30}
-        
-        for a in soup.find_all('a', href=True):
-            score = sum(v for k, v in weights.items() if k in a.get_text().lower() or k in a['href'].lower())
-            if score > 10:
-                legal_url = urljoin(url, a['href'])
-                break 
-                
-        if legal_url:
-            l_res = requests.get(legal_url, headers=headers, timeout=5)
-            legal_text = BeautifulSoup(l_res.text, 'html.parser').get_text()[:4000]
-            adm_flag = any(kw in legal_text.lower() for kw in ['automated decision', 'profiling', 'automatisierte entscheidung', '自动化决策'])
+        final_url, soup, _ = fetch_html(url, headers, timeout=10)
+        domain = site_origin(final_url)
 
-        # 3.3 评分逻辑 (完整保留)
-        score = 20
-        if ai_bots_blocked or meta: score += 30
-        elif general_bots_blocked: score += 10 
-        if adm_flag: score += 15
-        if legal_url: score += 35
+        robots = audit_robots(domain, headers)
+        meta_found, meta_evidence = detect_tdm_meta(soup)
+        page_text = soup.get_text(" ", strip=True)
+        page_tdm_declared, page_tdm_evidence = detect_tdm_clause(page_text)
+        policy = audit_policy_pages(soup, final_url, headers)
+
+        tdm_natural = page_tdm_declared or policy["tdm_clause"]
+        tdm_evidence = page_tdm_evidence or policy["tdm_evidence"]
+        tdm = {
+            "meta": meta_found,
+            "meta_evidence": meta_evidence,
+            "ai_bots": robots["ai_bots"],
+            "general_bots": robots["general_bots"],
+            "robots_evidence": robots["evidence"],
+            "natural_language": tdm_natural,
+            "natural_language_evidence": tdm_evidence
+        }
+        privacy = {
+            "policy_url": policy["policy_url"],
+            "adm_declared": policy["adm_declared"],
+            "adm_evidence": policy["adm_evidence"]
+        }
+        score = calculate_audit_score(tdm, privacy)
 
         raw_data = {
-            "url": url, 
-            "tdm": {"meta": meta is not None, "ai_bots": ai_bots_blocked, "general_bots": general_bots_blocked},
-            "privacy": {"policy_url": legal_url, "adm_declared": adm_flag},
-            "score": score, "text": legal_text if legal_text else soup.get_text()[:3000]
+            "url": final_url,
+            "tdm": tdm,
+            "privacy": privacy,
+            "score": score,
+            "text": policy["policy_text"] if policy["policy_text"] else page_text[:3000]
         }
         return raw_data
-    except Exception as e:
+    except (requests.RequestException, ValueError) as e:
         st.error(f"Audit Failed: {e}")
         return None
 
@@ -375,7 +563,7 @@ with st.sidebar:
     st.divider()
 
     # 执行抓取
-    updates = fetch_eu_legal_links(keywords=final_kw, limit=15, start_date="2020-01-01")
+    updates = fetch_eu_legal_links(keywords=final_kw, limit=15, start_date="2016-01-01")
     
     # 渲染结果卡片
     if updates:
@@ -437,11 +625,19 @@ if st.session_state['scan_result']:
             if r["tdm"]["ai_bots"]: st.success(f"{t['tdm_success']}{', '.join(r['tdm']['ai_bots'])}")
             elif r["tdm"]["general_bots"]: st.warning(f"{t['tdm_grey']}")
             else: st.error(f"{t['tdm_fail']}")
+            if r["tdm"].get("meta_evidence"):
+                st.caption(f"Meta evidence: {r['tdm']['meta_evidence']}")
+            if r["tdm"].get("robots_evidence"):
+                st.caption("Robots evidence: " + " | ".join(r["tdm"]["robots_evidence"]))
+            if r["tdm"].get("natural_language_evidence"):
+                st.caption(f"Text evidence: {r['tdm']['natural_language_evidence']}")
         
         with st.container(border=True):
             st.markdown(f"**{t['adm_layer']}**")
             if r["privacy"]["adm_declared"]: st.success(f"{t['adm_success']}")
             else: st.warning(f"{t['adm_fail']}")
+            if r["privacy"].get("adm_evidence"):
+                st.caption(f"ADM evidence: {r['privacy']['adm_evidence']}")
             
         with st.container(border=True):
             st.markdown(f"**{t['gdpr_layer']}**")
