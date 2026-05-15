@@ -8,128 +8,42 @@ import re
 import datetime
 import base64
 import ipaddress
+import json
+from pathlib import Path
 
 # ================= 1. 页面与学术状态配置 =================
 st.set_page_config(page_title="TDM & GDPR Compliance Auditor", page_icon="⚖️", layout="wide")
 
 @st.cache_data(ttl=3600)
-def fetch_legal_references(keywords=None, limit=30, start_date="2016-01-01"):
+def load_legal_references():
     """
-    Curated official references for EU and German compliance research.
+    Load curated official references from JSON so the legal library can grow
+    without turning the application code into a document database.
     """
-    references = [
-        {
-            "date": "2024-07-12",
-            "title": "Regulation (EU) 2024/1689 (Artificial Intelligence Act)",
-            "jurisdiction": "EU",
-            "source": "EUR-Lex",
-            "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32024R1689",
-            "keywords": ["ai", "artificial intelligence", "ai act", "gpaI", "data", "compliance"]
-        },
-        {
-            "date": "2019-05-17",
-            "title": "Directive (EU) 2019/790 on copyright and related rights in the Digital Single Market",
-            "jurisdiction": "EU",
-            "source": "EUR-Lex",
-            "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32019L0790",
-            "keywords": ["copyright", "tdm", "text and data mining", "data mining", "training data"]
-        },
-        {
-            "date": "2016-05-04",
-            "title": "Regulation (EU) 2016/679 (General Data Protection Regulation)",
-            "jurisdiction": "EU",
-            "source": "EUR-Lex",
-            "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32016R0679",
-            "keywords": ["gdpr", "data protection", "privacy", "automated decision", "profiling", "article 22"]
-        },
-        {
-            "date": "2022-10-27",
-            "title": "Regulation (EU) 2022/2065 (Digital Services Act)",
-            "jurisdiction": "EU",
-            "source": "EUR-Lex",
-            "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32022R2065",
-            "keywords": ["dsa", "digital services", "platform", "transparency", "online platforms"]
-        },
-        {
-            "date": "2018-12-21",
-            "title": "Regulation (EU) 2018/1807 on the free flow of non-personal data",
-            "jurisdiction": "EU",
-            "source": "EUR-Lex",
-            "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32018R1807",
-            "keywords": ["non-personal data", "data", "free flow", "data economy"]
-        },
-        {
-            "date": "2024-05-17",
-            "title": "German UrhG § 44b - Text und Data Mining",
-            "jurisdiction": "Germany",
-            "source": "Gesetze im Internet",
-            "url": "https://www.gesetze-im-internet.de/urhg/__44b.html",
-            "keywords": ["urhg", "copyright", "tdm", "text und data mining", "nutzungsvorbehalt", "machine-readable"]
-        },
-        {
-            "date": "2024-05-17",
-            "title": "German Copyright Act (UrhG) - English translation",
-            "jurisdiction": "Germany",
-            "source": "Gesetze im Internet",
-            "url": "https://www.gesetze-im-internet.de/englisch_urhg/englisch_urhg.html",
-            "keywords": ["urhg", "copyright", "tdm", "english", "text and data mining"]
-        },
-        {
-            "date": "2024-05-17",
-            "title": "Bundesdatenschutzgesetz (BDSG) - Federal Data Protection Act",
-            "jurisdiction": "Germany",
-            "source": "Gesetze im Internet",
-            "url": "https://www.gesetze-im-internet.de/bdsg_2018/",
-            "keywords": ["bdsg", "data protection", "privacy", "gdpr", "datenschutz"]
-        },
-        {
-            "date": "2024-12-01",
-            "title": "Federal Data Protection Act (BDSG) - English PDF",
-            "jurisdiction": "Germany",
-            "source": "Gesetze im Internet",
-            "url": "https://www.gesetze-im-internet.de/englisch_bdsg/englisch_bdsg.pdf",
-            "keywords": ["bdsg", "data protection", "privacy", "english", "pdf"]
-        },
-        {
-            "date": "2024-05-14",
-            "title": "Digitale-Dienste-Gesetz (DDG)",
-            "jurisdiction": "Germany",
-            "source": "Gesetze im Internet",
-            "url": "https://www.gesetze-im-internet.de/ddg/",
-            "keywords": ["ddg", "digital services", "platform", "transparency", "dsa"]
-        },
-        {
-            "date": "2024-05-14",
-            "title": "TDDDG - Datenschutz und Privatsphäre in Telekommunikation und digitalen Diensten",
-            "jurisdiction": "Germany",
-            "source": "Gesetze im Internet",
-            "url": "https://www.gesetze-im-internet.de/ttdsg/BJNR198210021.html",
-            "keywords": ["tdddg", "ttdsg", "cookies", "privacy", "telecommunication", "digital services", "datenschutz"]
-        },
-        {
-            "date": "2023-12-22",
-            "title": "Allgemeines Gleichbehandlungsgesetz (AGG)",
-            "jurisdiction": "Germany",
-            "source": "Gesetze im Internet",
-            "url": "https://www.gesetze-im-internet.de/agg/",
-            "keywords": ["agg", "discrimination", "non-discrimination", "bias", "automated decision", "employment"]
-        },
-        {
-            "date": "2017-07-17",
-            "title": "Produkthaftungsgesetz (ProdHaftG)",
-            "jurisdiction": "Germany",
-            "source": "Gesetze im Internet",
-            "url": "https://www.gesetze-im-internet.de/prodhaftg/",
-            "keywords": ["product liability", "liability", "prodhaftg", "ai liability", "safety"]
-        }
-    ]
+    reference_path = Path(__file__).with_name("legal_references.json")
+    try:
+        return json.loads(reference_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
 
+def fetch_legal_references(keywords=None, jurisdiction="All", topic="All", limit=30, start_date="2016-01-01"):
+    references = load_legal_references()
     query = (keywords or "").strip().lower()
     results = []
     for item in references:
         if item["date"] < start_date:
             continue
-        haystack = " ".join([item["title"], item["jurisdiction"], item["source"], *item["keywords"]]).lower()
+        if jurisdiction != "All" and item["jurisdiction"] != jurisdiction:
+            continue
+        if topic != "All" and topic not in item.get("topics", []):
+            continue
+        haystack = " ".join([
+            item["title"],
+            item["jurisdiction"],
+            item["source"],
+            *item.get("topics", []),
+            *item.get("keywords", [])
+        ]).lower()
         if query and query not in haystack:
             continue
         results.append({
@@ -137,7 +51,8 @@ def fetch_legal_references(keywords=None, limit=30, start_date="2016-01-01"):
             "title": {"value": item["title"]},
             "jurisdiction": {"value": item["jurisdiction"]},
             "source": {"value": item["source"]},
-            "url": {"value": item["url"]}
+            "url": {"value": item["url"]},
+            "topics": {"value": item.get("topics", [])}
         })
 
     results.sort(key=lambda x: (x["jurisdiction"]["value"], x["date"]["value"]), reverse=True)
@@ -634,6 +549,52 @@ def calculate_audit_score(tdm, privacy):
         score += 5
     return min(score, 100)
 
+def build_certainty(tdm, privacy, access_error=None):
+    if tdm["meta"] or tdm["ai_bots"]:
+        tdm_status = "Confirmed machine-readable reservation"
+        tdm_level = "Confirmed"
+    elif tdm["general_bots"]:
+        tdm_status = "General bot block found, but AI-specific reservation not confirmed"
+        tdm_level = "Likely"
+    elif access_error:
+        tdm_status = "Homepage blocked; only robots.txt and fallback checks were possible"
+        tdm_level = "Unconfirmed"
+    else:
+        tdm_status = "No machine-readable TDM reservation found"
+        tdm_level = "Not found"
+
+    if privacy["policy_url"]:
+        privacy_status = "Privacy policy located"
+        privacy_level = "Confirmed"
+    elif access_error:
+        privacy_status = "Privacy policy could not be confirmed because homepage access was blocked"
+        privacy_level = "Unconfirmed"
+    else:
+        privacy_status = "No privacy policy link found in accessible pages"
+        privacy_level = "Not found"
+
+    if privacy["adm_declared"]:
+        adm_status = "ADM/profiling language detected"
+        adm_level = "Confirmed"
+    elif privacy["policy_url"] and privacy.get("policy_discovery", "").startswith("known_verified"):
+        adm_status = "Policy link known, but policy text was not accessible for ADM analysis"
+        adm_level = "Unconfirmed"
+    elif privacy["policy_url"]:
+        adm_status = "Policy reviewed; no ADM/profiling language detected"
+        adm_level = "Not found"
+    elif access_error:
+        adm_status = "ADM could not be assessed because policy text was unavailable"
+        adm_level = "Unconfirmed"
+    else:
+        adm_status = "No ADM/profiling declaration found"
+        adm_level = "Not found"
+
+    return {
+        "tdm": {"level": tdm_level, "status": tdm_status},
+        "privacy": {"level": privacy_level, "status": privacy_status},
+        "adm": {"level": adm_level, "status": adm_status}
+    }
+
 def run_academic_audit(url):
     url = normalize_url(url)
     headers = {
@@ -670,12 +631,14 @@ def run_academic_audit(url):
             "policy_discovery": policy["policy_discovery"]
         }
         score = calculate_audit_score(tdm, privacy)
+        certainty = build_certainty(tdm, privacy)
 
         raw_data = {
             "url": final_url,
             "tdm": tdm,
             "privacy": privacy,
             "score": score,
+            "certainty": certainty,
             "text": policy["policy_text"] if policy["policy_text"] else page_text[:3000],
             "access_error": None
         }
@@ -700,13 +663,15 @@ def run_academic_audit(url):
             "adm_evidence": policy["adm_evidence"],
             "policy_discovery": policy["policy_discovery"]
         }
+        access_error = f"Target page returned {status_code}; homepage-derived checks were skipped. robots.txt and privacy fallback paths were audited."
         return {
             "url": url,
             "tdm": tdm,
             "privacy": privacy,
             "score": calculate_audit_score(tdm, privacy),
+            "certainty": build_certainty(tdm, privacy, access_error=access_error),
             "text": policy["policy_text"],
-            "access_error": f"Target page returned {status_code}; homepage-derived checks were skipped. robots.txt and privacy fallback paths were audited."
+            "access_error": access_error
         }
     except (requests.RequestException, ValueError) as e:
         st.error(f"Audit Failed: {e}")
@@ -726,6 +691,19 @@ with st.sidebar:
     
     # 检索设置区域
     st.markdown(t["fetch_settings"])
+    ref_col1, ref_col2 = st.columns(2)
+    with ref_col1:
+        selected_jurisdiction = st.selectbox(
+            "Jurisdiction",
+            ["All", "EU", "Germany"],
+            label_visibility="collapsed"
+        )
+    with ref_col2:
+        selected_topic = st.selectbox(
+            "Topic",
+            ["All", "AI", "TDM", "GDPR", "ADM", "Privacy", "Platform", "Copyright", "Liability", "Transparency"],
+            label_visibility="collapsed"
+        )
     user_kw = st.text_input("Search Input", placeholder=t["search_placeholder"], label_visibility="collapsed")
     # 💡 新增：在这里提示用户必须使用英文检索
     st.caption(t["english_hint"]) 
@@ -739,7 +717,13 @@ with st.sidebar:
     st.divider()
 
     # 执行抓取
-    updates = fetch_legal_references(keywords=final_kw, limit=30, start_date="2016-01-01")
+    updates = fetch_legal_references(
+        keywords=final_kw,
+        jurisdiction=selected_jurisdiction,
+        topic=selected_topic,
+        limit=30,
+        start_date="2016-01-01"
+    )
     
     # 渲染结果卡片
     if updates:
@@ -751,6 +735,8 @@ with st.sidebar:
                 with st.container(border=True):
                     st.caption(f"📅 {item['date']['value']} | {item['jurisdiction']['value']} | {item['source']['value']}") 
                     st.markdown(f"<p style='font-size:14px; font-weight:bold;'>{item['title']['value']}</p>", unsafe_allow_html=True)
+                    if item["topics"]["value"]:
+                        st.caption("Topics: " + ", ".join(item["topics"]["value"]))
                     st.markdown(f"[🔗 {t['view_link']}]({item['url']['value']})")
     else:
         st.info(t["monitoring"])
@@ -799,6 +785,7 @@ if st.session_state['scan_result']:
         st.subheader(t["report_title"])
         with st.container(border=True):
             st.markdown(f"**{t['tdm_layer']}**")
+            st.caption(f"Certainty: {r.get('certainty', {}).get('tdm', {}).get('level', 'Unknown')} - {r.get('certainty', {}).get('tdm', {}).get('status', '')}")
             if r["tdm"]["ai_bots"]: st.success(f"{t['tdm_success']}{', '.join(r['tdm']['ai_bots'])}")
             elif r["tdm"]["general_bots"]: st.warning(f"{t['tdm_grey']}")
             else: st.error(f"{t['tdm_fail']}")
@@ -811,6 +798,7 @@ if st.session_state['scan_result']:
         
         with st.container(border=True):
             st.markdown(f"**{t['adm_layer']}**")
+            st.caption(f"Certainty: {r.get('certainty', {}).get('adm', {}).get('level', 'Unknown')} - {r.get('certainty', {}).get('adm', {}).get('status', '')}")
             if r["privacy"]["adm_declared"]: st.success(f"{t['adm_success']}")
             else: st.warning(f"{t['adm_fail']}")
             if r["privacy"].get("adm_evidence"):
@@ -818,6 +806,7 @@ if st.session_state['scan_result']:
             
         with st.container(border=True):
             st.markdown(f"**{t['gdpr_layer']}**")
+            st.caption(f"Certainty: {r.get('certainty', {}).get('privacy', {}).get('level', 'Unknown')} - {r.get('certainty', {}).get('privacy', {}).get('status', '')}")
             if r["privacy"]["policy_url"]:
                 st.success(f"{t['policy_success']}[Link]({r['privacy']['policy_url']})")
                 st.caption(f"Discovery: {r['privacy'].get('policy_discovery', 'unknown')}")
