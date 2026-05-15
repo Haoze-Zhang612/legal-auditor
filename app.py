@@ -488,7 +488,8 @@ def run_academic_audit(url):
     url = normalize_url(url)
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept-Language': 'en-US,en;q=0.8,de;q=0.6'
+        'Accept-Language': 'en-US,en;q=0.8,de;q=0.6',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
     }
     
     try:
@@ -524,9 +525,36 @@ def run_academic_audit(url):
             "tdm": tdm,
             "privacy": privacy,
             "score": score,
-            "text": policy["policy_text"] if policy["policy_text"] else page_text[:3000]
+            "text": policy["policy_text"] if policy["policy_text"] else page_text[:3000],
+            "access_error": None
         }
         return raw_data
+    except requests.HTTPError as e:
+        status_code = e.response.status_code if e.response is not None else "HTTP"
+        domain = site_origin(url)
+        robots = audit_robots(domain, headers)
+        tdm = {
+            "meta": False,
+            "meta_evidence": None,
+            "ai_bots": robots["ai_bots"],
+            "general_bots": robots["general_bots"],
+            "robots_evidence": robots["evidence"],
+            "natural_language": False,
+            "natural_language_evidence": None
+        }
+        privacy = {
+            "policy_url": None,
+            "adm_declared": False,
+            "adm_evidence": None
+        }
+        return {
+            "url": url,
+            "tdm": tdm,
+            "privacy": privacy,
+            "score": calculate_audit_score(tdm, privacy),
+            "text": "",
+            "access_error": f"Target page returned {status_code}; only robots.txt could be audited."
+        }
     except (requests.RequestException, ValueError) as e:
         st.error(f"Audit Failed: {e}")
         return None
@@ -614,6 +642,9 @@ if st.session_state['scan_result']:
     res_l, res_r = st.columns([1, 1.5])
 
     with res_l:
+        if r.get("access_error"):
+            st.warning(r["access_error"])
+
         st.subheader(t["score_title"])
         fig = go.Figure(go.Indicator(mode="gauge+number", value=r["score"], gauge={'bar': {'color': "#1f77b4"}}))
         fig.update_layout(height=180, margin=dict(l=10, r=10, t=10, b=10), paper_bgcolor='rgba(0,0,0,0)')
