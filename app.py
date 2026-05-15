@@ -13,29 +13,114 @@ import ipaddress
 st.set_page_config(page_title="TDM & GDPR Compliance Auditor", page_icon="⚖️", layout="wide")
 
 @st.cache_data(ttl=3600)
-def fetch_eu_legal_links(keywords=None, limit=15, start_date="2020-01-01"):
+def fetch_legal_references(keywords=None, limit=30, start_date="2016-01-01"):
     """
-    Curated baseline references.
-    精确模式下不再把 mock RSS 伪装成实时 EUR-Lex 结果。
+    Curated official references for EU and German compliance research.
     """
     references = [
         {
             "date": "2024-07-12",
             "title": "Regulation (EU) 2024/1689 (Artificial Intelligence Act)",
-            "celex": "32024R1689",
-            "keywords": ["ai", "artificial intelligence", "ai act", "data"]
+            "jurisdiction": "EU",
+            "source": "EUR-Lex",
+            "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32024R1689",
+            "keywords": ["ai", "artificial intelligence", "ai act", "gpaI", "data", "compliance"]
         },
         {
             "date": "2019-05-17",
             "title": "Directive (EU) 2019/790 on copyright and related rights in the Digital Single Market",
-            "celex": "32019L0790",
-            "keywords": ["copyright", "tdm", "text and data mining", "data"]
+            "jurisdiction": "EU",
+            "source": "EUR-Lex",
+            "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32019L0790",
+            "keywords": ["copyright", "tdm", "text and data mining", "data mining", "training data"]
         },
         {
             "date": "2016-05-04",
             "title": "Regulation (EU) 2016/679 (General Data Protection Regulation)",
-            "celex": "32016R0679",
-            "keywords": ["gdpr", "data protection", "privacy", "data"]
+            "jurisdiction": "EU",
+            "source": "EUR-Lex",
+            "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32016R0679",
+            "keywords": ["gdpr", "data protection", "privacy", "automated decision", "profiling", "article 22"]
+        },
+        {
+            "date": "2022-10-27",
+            "title": "Regulation (EU) 2022/2065 (Digital Services Act)",
+            "jurisdiction": "EU",
+            "source": "EUR-Lex",
+            "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32022R2065",
+            "keywords": ["dsa", "digital services", "platform", "transparency", "online platforms"]
+        },
+        {
+            "date": "2018-12-21",
+            "title": "Regulation (EU) 2018/1807 on the free flow of non-personal data",
+            "jurisdiction": "EU",
+            "source": "EUR-Lex",
+            "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32018R1807",
+            "keywords": ["non-personal data", "data", "free flow", "data economy"]
+        },
+        {
+            "date": "2024-05-17",
+            "title": "German UrhG § 44b - Text und Data Mining",
+            "jurisdiction": "Germany",
+            "source": "Gesetze im Internet",
+            "url": "https://www.gesetze-im-internet.de/urhg/__44b.html",
+            "keywords": ["urhg", "copyright", "tdm", "text und data mining", "nutzungsvorbehalt", "machine-readable"]
+        },
+        {
+            "date": "2024-05-17",
+            "title": "German Copyright Act (UrhG) - English translation",
+            "jurisdiction": "Germany",
+            "source": "Gesetze im Internet",
+            "url": "https://www.gesetze-im-internet.de/englisch_urhg/englisch_urhg.html",
+            "keywords": ["urhg", "copyright", "tdm", "english", "text and data mining"]
+        },
+        {
+            "date": "2024-05-17",
+            "title": "Bundesdatenschutzgesetz (BDSG) - Federal Data Protection Act",
+            "jurisdiction": "Germany",
+            "source": "Gesetze im Internet",
+            "url": "https://www.gesetze-im-internet.de/bdsg_2018/",
+            "keywords": ["bdsg", "data protection", "privacy", "gdpr", "datenschutz"]
+        },
+        {
+            "date": "2024-12-01",
+            "title": "Federal Data Protection Act (BDSG) - English PDF",
+            "jurisdiction": "Germany",
+            "source": "Gesetze im Internet",
+            "url": "https://www.gesetze-im-internet.de/englisch_bdsg/englisch_bdsg.pdf",
+            "keywords": ["bdsg", "data protection", "privacy", "english", "pdf"]
+        },
+        {
+            "date": "2024-05-14",
+            "title": "Digitale-Dienste-Gesetz (DDG)",
+            "jurisdiction": "Germany",
+            "source": "Gesetze im Internet",
+            "url": "https://www.gesetze-im-internet.de/ddg/",
+            "keywords": ["ddg", "digital services", "platform", "transparency", "dsa"]
+        },
+        {
+            "date": "2024-05-14",
+            "title": "TDDDG - Datenschutz und Privatsphäre in Telekommunikation und digitalen Diensten",
+            "jurisdiction": "Germany",
+            "source": "Gesetze im Internet",
+            "url": "https://www.gesetze-im-internet.de/ttdsg/BJNR198210021.html",
+            "keywords": ["tdddg", "ttdsg", "cookies", "privacy", "telecommunication", "digital services", "datenschutz"]
+        },
+        {
+            "date": "2023-12-22",
+            "title": "Allgemeines Gleichbehandlungsgesetz (AGG)",
+            "jurisdiction": "Germany",
+            "source": "Gesetze im Internet",
+            "url": "https://www.gesetze-im-internet.de/agg/",
+            "keywords": ["agg", "discrimination", "non-discrimination", "bias", "automated decision", "employment"]
+        },
+        {
+            "date": "2017-07-17",
+            "title": "Produkthaftungsgesetz (ProdHaftG)",
+            "jurisdiction": "Germany",
+            "source": "Gesetze im Internet",
+            "url": "https://www.gesetze-im-internet.de/prodhaftg/",
+            "keywords": ["product liability", "liability", "prodhaftg", "ai liability", "safety"]
         }
     ]
 
@@ -44,16 +129,18 @@ def fetch_eu_legal_links(keywords=None, limit=15, start_date="2020-01-01"):
     for item in references:
         if item["date"] < start_date:
             continue
-        haystack = " ".join([item["title"], *item["keywords"]]).lower()
+        haystack = " ".join([item["title"], item["jurisdiction"], item["source"], *item["keywords"]]).lower()
         if query and query not in haystack:
             continue
         results.append({
             "date": {"value": item["date"]},
             "title": {"value": item["title"]},
-            "celex": {"value": item["celex"]}
+            "jurisdiction": {"value": item["jurisdiction"]},
+            "source": {"value": item["source"]},
+            "url": {"value": item["url"]}
         })
 
-    results.sort(key=lambda x: x["date"]["value"], reverse=True)
+    results.sort(key=lambda x: (x["jurisdiction"]["value"], x["date"]["value"]), reverse=True)
     return results[:limit]
 # 将原有的隐藏 CSS 和 新的背景图 CSS 合并成一个函数
 def set_page_bg_and_hide_elements(image_file):
@@ -167,11 +254,11 @@ ui_texts = {
         "ai_tag_status": "Current Doctrinal Status",
         "ai_tag_risk": "Compliance Friction",
         "ai_tag_suggest": "Strategic Mitigation",
-        "sidebar_title": "## 🇪🇺 Regulatory Reference Feed",
-        "view_link": "View Full Text (EUR-Lex)",
+        "sidebar_title": "## 🇪🇺🇩🇪 Regulatory Reference Feed",
+        "view_link": "View Official Text",
         "fetch_settings": "**Fetch Settings**",
-        "search_placeholder": "Enter keyword (English only, e.g., Copyright)",
-        "english_hint": "💡 *Note: Please use English keywords for EUR-Lex search.*",
+        "search_placeholder": "Enter keyword (e.g., Copyright, BDSG, TDM)",
+        "english_hint": "💡 *Tip: English or German legal keywords both work.*",
         "tracking": "📍 Currently Tracking: ",
         "results_found": "Found {} verified reference documents",
         "monitoring": "⏳ No matching verified reference in local baseline.",
@@ -205,11 +292,11 @@ ui_texts = {
         "ai_tag_status": "合规现状",
         "ai_tag_risk": "核心法理摩擦",
         "ai_tag_suggest": "合规改进建议",
-        "sidebar_title": "## 🇪🇺 欧盟法规参考源",
-        "view_link": "查看全文 (EUR-Lex)",
+        "sidebar_title": "## 🇪🇺🇩🇪 欧盟/德国法规参考源",
+        "view_link": "查看官方文本",
         "fetch_settings": "**检索设置 / Fetch Settings**",
-        "search_placeholder": "🔍 输入关键词 (仅限英文, 例: Copyright)",
-        "english_hint": "💡 *提示: EUR-Lex 数据库检索请使用英文关键词。*",
+        "search_placeholder": "🔍 输入关键词 (例: Copyright, BDSG, TDM)",
+        "english_hint": "💡 *提示: 英文或德文法律关键词都可以。*",
         "tracking": "📍 当前追踪: ",
         "results_found": "共发现 {} 份已核验参考文件",
         "monitoring": "⏳ 本地核验基线中暂无匹配文件。",
@@ -243,11 +330,11 @@ ui_texts = {
         "ai_tag_status": "Doktrinärer Status",
         "ai_tag_risk": "Compliance-Friktion",
         "ai_tag_suggest": "Strategische Minderung",
-        "sidebar_title": "## 🇪🇺 Regulierungsreferenzen",
-        "view_link": "Volltext anzeigen (EUR-Lex)",
+        "sidebar_title": "## 🇪🇺🇩🇪 Regulierungsreferenzen",
+        "view_link": "Amtlichen Text anzeigen",
         "fetch_settings": "**Abrufeinstellungen**",
-        "search_placeholder": "🔍 Suchbegriff (nur auf Englisch, z.B. Copyright)",
-        "english_hint": "💡 *Hinweis: Bitte englische Suchbegriffe für EUR-Lex verwenden.*",
+        "search_placeholder": "🔍 Suchbegriff (z.B. Copyright, BDSG, TDM)",
+        "english_hint": "💡 *Hinweis: Englische und deutsche Rechtsbegriffe funktionieren.*",
         "tracking": "📍 Aktuelles Thema: ",
         "results_found": "{} geprüfte Referenzdokumente gefunden",
         "monitoring": "⏳ Keine passende geprüfte Referenz in der lokalen Basis.",
@@ -657,7 +744,7 @@ with st.sidebar:
     st.divider()
 
     # 执行抓取
-    updates = fetch_eu_legal_links(keywords=final_kw, limit=15, start_date="2016-01-01")
+    updates = fetch_legal_references(keywords=final_kw, limit=30, start_date="2016-01-01")
     
     # 渲染结果卡片
     if updates:
@@ -667,11 +754,9 @@ with st.sidebar:
         with st.container(height=500, border=False): 
             for item in updates:
                 with st.container(border=True):
-                    st.caption(f"📅 {item['date']['value']}") 
+                    st.caption(f"📅 {item['date']['value']} | {item['jurisdiction']['value']} | {item['source']['value']}") 
                     st.markdown(f"<p style='font-size:14px; font-weight:bold;'>{item['title']['value']}</p>", unsafe_allow_html=True)
-                    
-                    celex_link = f"https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:{item['celex']['value']}"
-                    st.markdown(f"[🔗 {t['view_link']}]({celex_link})")
+                    st.markdown(f"[🔗 {t['view_link']}]({item['url']['value']})")
     else:
         st.info(t["monitoring"])
         
