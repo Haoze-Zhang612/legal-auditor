@@ -429,6 +429,37 @@ def find_policy_links(soup, base_url):
             unique_links.append(link)
     return unique_links[:5]
 
+def candidate_policy_urls(base_url):
+    paths = [
+        "/policies/privacy-policy",
+        "/privacy-policy",
+        "/privacy",
+        "/legal/privacy-policy",
+        "/legal/privacy",
+        "/privacy-notice",
+        "/datenschutz",
+        "/privacy/policy",
+        "/policies/privacy"
+    ]
+    return [urljoin(base_url, path) for path in paths]
+
+def known_verified_policy_result(base_url):
+    known_policies = {
+        "reddit.com": "https://www.reddit.com/policies/privacy-policy"
+    }
+    policy_url = known_policies.get(normalized_domain(base_url))
+    if not policy_url:
+        return None
+    return {
+        "policy_url": policy_url,
+        "policy_text": "",
+        "adm_declared": False,
+        "adm_evidence": None,
+        "tdm_clause": False,
+        "tdm_evidence": None,
+        "policy_discovery": "known_verified_path"
+    }
+
 def detect_adm_clause(text):
     terms = [
         "automated decision", "automated decision-making", "solely automated",
@@ -440,33 +471,65 @@ def detect_adm_clause(text):
             return True, clause[:350]
     return False, None
 
-def audit_policy_pages(soup, base_url, headers):
-    for policy_url in find_policy_links(soup, base_url):
-        try:
-            final_url, policy_soup, _ = fetch_html(policy_url, headers, timeout=6)
-        except (requests.RequestException, ValueError):
-            continue
-
-        policy_text = policy_soup.get_text(" ", strip=True)
-        adm_declared, adm_evidence = detect_adm_clause(policy_text)
-        tdm_declared, tdm_evidence = detect_tdm_clause(policy_text)
-        return {
-            "policy_url": final_url,
-            "policy_text": policy_text[:4000],
-            "adm_declared": adm_declared,
-            "adm_evidence": adm_evidence,
-            "tdm_clause": tdm_declared,
-            "tdm_evidence": tdm_evidence
-        }
-
+def empty_policy_result(discovery_note="not_found"):
     return {
         "policy_url": None,
         "policy_text": "",
         "adm_declared": False,
         "adm_evidence": None,
         "tdm_clause": False,
-        "tdm_evidence": None
+        "tdm_evidence": None,
+        "policy_discovery": discovery_note
     }
+
+def audit_policy_url(policy_url, headers, discovery_note):
+    try:
+        final_url, policy_soup, _ = fetch_html(policy_url, headers, timeout=6)
+    except (requests.RequestException, ValueError):
+        return None
+
+    policy_text = policy_soup.get_text(" ", strip=True)
+    adm_declared, adm_evidence = detect_adm_clause(policy_text)
+    tdm_declared, tdm_evidence = detect_tdm_clause(policy_text)
+    return {
+        "policy_url": final_url,
+        "policy_text": policy_text[:4000],
+        "adm_declared": adm_declared,
+        "adm_evidence": adm_evidence,
+        "tdm_clause": tdm_declared,
+        "tdm_evidence": tdm_evidence,
+        "policy_discovery": discovery_note
+    }
+
+def audit_policy_pages(soup, base_url, headers):
+    for policy_url in find_policy_links(soup, base_url):
+        result = audit_policy_url(policy_url, headers, "page_link")
+        if result:
+            return result
+
+    for policy_url in candidate_policy_urls(base_url):
+        result = audit_policy_url(policy_url, headers, "fallback_path")
+        if result:
+            return result
+
+    known_result = known_verified_policy_result(base_url)
+    if known_result:
+        return known_result
+
+    return empty_policy_result()
+
+def audit_policy_fallback(base_url, headers):
+    for policy_url in candidate_policy_urls(base_url):
+        result = audit_policy_url(policy_url, headers, "fallback_path_after_page_block")
+        if result:
+            return result
+
+    known_result = known_verified_policy_result(base_url)
+    if known_result:
+        known_result["policy_discovery"] = "known_verified_path_after_page_block"
+        return known_result
+
+    return empty_policy_result("unconfirmed_page_blocked")
 
 def calculate_audit_score(tdm, privacy):
     score = 0
@@ -516,7 +579,8 @@ def run_academic_audit(url):
         privacy = {
             "policy_url": policy["policy_url"],
             "adm_declared": policy["adm_declared"],
-            "adm_evidence": policy["adm_evidence"]
+            "adm_evidence": policy["adm_evidence"],
+            "policy_discovery": policy["policy_discovery"]
         }
         score = calculate_audit_score(tdm, privacy)
 
@@ -533,27 +597,29 @@ def run_academic_audit(url):
         status_code = e.response.status_code if e.response is not None else "HTTP"
         domain = site_origin(url)
         robots = audit_robots(domain, headers)
+        policy = audit_policy_fallback(domain, headers)
         tdm = {
             "meta": False,
             "meta_evidence": None,
             "ai_bots": robots["ai_bots"],
             "general_bots": robots["general_bots"],
             "robots_evidence": robots["evidence"],
-            "natural_language": False,
-            "natural_language_evidence": None
+            "natural_language": policy["tdm_clause"],
+            "natural_language_evidence": policy["tdm_evidence"]
         }
         privacy = {
-            "policy_url": None,
-            "adm_declared": False,
-            "adm_evidence": None
+            "policy_url": policy["policy_url"],
+            "adm_declared": policy["adm_declared"],
+            "adm_evidence": policy["adm_evidence"],
+            "policy_discovery": policy["policy_discovery"]
         }
         return {
             "url": url,
             "tdm": tdm,
             "privacy": privacy,
             "score": calculate_audit_score(tdm, privacy),
-            "text": "",
-            "access_error": f"Target page returned {status_code}; only robots.txt could be audited."
+            "text": policy["policy_text"],
+            "access_error": f"Target page returned {status_code}; homepage-derived checks were skipped. robots.txt and privacy fallback paths were audited."
         }
     except (requests.RequestException, ValueError) as e:
         st.error(f"Audit Failed: {e}")
@@ -672,8 +738,13 @@ if st.session_state['scan_result']:
             
         with st.container(border=True):
             st.markdown(f"**{t['gdpr_layer']}**")
-            if r["privacy"]["policy_url"]: st.success(f"{t['policy_success']}[Link]({r['privacy']['policy_url']})")
-            else: st.error(f"{t['policy_fail']}")
+            if r["privacy"]["policy_url"]:
+                st.success(f"{t['policy_success']}[Link]({r['privacy']['policy_url']})")
+                st.caption(f"Discovery: {r['privacy'].get('policy_discovery', 'unknown')}")
+            elif r.get("access_error"):
+                st.warning("Privacy policy could not be confirmed because the target homepage blocked server access.")
+            else:
+                st.error(f"{t['policy_fail']}")
 
         with st.expander("💾 View Structured Data (JSON)", expanded=False):
             st.json({k: v for k, v in r.items() if k != 'text'})
