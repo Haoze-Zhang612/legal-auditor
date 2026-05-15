@@ -730,13 +730,8 @@ with st.sidebar:
     # 💡 新增：在这里提示用户必须使用英文检索
     st.caption(t["english_hint"]) 
     
-    # 确定最终关键词
-    active_kw = None
-    if st.session_state.get('scan_result'):
-        r_now = st.session_state['scan_result']
-        active_kw = t["topic_ai"] if r_now['tdm']['ai_bots'] else t["topic_data"]
-    
-    final_kw = user_kw if user_kw else active_kw
+    # 不输入关键词时显示完整参考库；输入关键词时才过滤。
+    final_kw = user_kw.strip() if user_kw else None
     
     if final_kw:
         st.info(f"{t['tracking']} **{final_kw}**")
