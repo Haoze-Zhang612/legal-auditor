@@ -14,6 +14,117 @@ from pathlib import Path
 # ================= 1. 页面与学术状态配置 =================
 st.set_page_config(page_title="TDM & GDPR Compliance Auditor", page_icon="⚖️", layout="wide")
 
+DEFAULT_LEGAL_REFERENCES = [
+    {
+        "date": "2024-07-12",
+        "title": "Regulation (EU) 2024/1689 (Artificial Intelligence Act)",
+        "jurisdiction": "EU",
+        "source": "EUR-Lex",
+        "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32024R1689",
+        "topics": ["AI", "Transparency"],
+        "keywords": ["ai", "artificial intelligence", "ai act", "gpai", "data", "compliance"]
+    },
+    {
+        "date": "2024-05-17",
+        "title": "German UrhG § 44b - Text und Data Mining",
+        "jurisdiction": "Germany",
+        "source": "Gesetze im Internet",
+        "url": "https://www.gesetze-im-internet.de/urhg/__44b.html",
+        "topics": ["TDM", "Copyright"],
+        "keywords": ["urhg", "copyright", "tdm", "text und data mining", "nutzungsvorbehalt"]
+    },
+    {
+        "date": "2024-05-17",
+        "title": "German Copyright Act (UrhG) - English translation",
+        "jurisdiction": "Germany",
+        "source": "Gesetze im Internet",
+        "url": "https://www.gesetze-im-internet.de/englisch_urhg/englisch_urhg.html",
+        "topics": ["TDM", "Copyright"],
+        "keywords": ["urhg", "copyright", "tdm", "english", "text and data mining"]
+    },
+    {
+        "date": "2024-05-17",
+        "title": "Bundesdatenschutzgesetz (BDSG) - Federal Data Protection Act",
+        "jurisdiction": "Germany",
+        "source": "Gesetze im Internet",
+        "url": "https://www.gesetze-im-internet.de/bdsg_2018/",
+        "topics": ["GDPR", "Privacy"],
+        "keywords": ["bdsg", "data protection", "privacy", "gdpr", "datenschutz"]
+    },
+    {
+        "date": "2024-05-14",
+        "title": "Digitale-Dienste-Gesetz (DDG)",
+        "jurisdiction": "Germany",
+        "source": "Gesetze im Internet",
+        "url": "https://www.gesetze-im-internet.de/ddg/",
+        "topics": ["Platform", "Transparency"],
+        "keywords": ["ddg", "digital services", "platform", "transparency", "dsa"]
+    },
+    {
+        "date": "2024-05-14",
+        "title": "TDDDG - Datenschutz und Privatsphäre in Telekommunikation und digitalen Diensten",
+        "jurisdiction": "Germany",
+        "source": "Gesetze im Internet",
+        "url": "https://www.gesetze-im-internet.de/ttdsg/BJNR198210021.html",
+        "topics": ["Privacy", "Platform"],
+        "keywords": ["tdddg", "ttdsg", "cookies", "privacy", "telecommunication", "datenschutz"]
+    },
+    {
+        "date": "2023-12-22",
+        "title": "Allgemeines Gleichbehandlungsgesetz (AGG)",
+        "jurisdiction": "Germany",
+        "source": "Gesetze im Internet",
+        "url": "https://www.gesetze-im-internet.de/agg/",
+        "topics": ["ADM", "Liability"],
+        "keywords": ["agg", "discrimination", "bias", "automated decision", "employment"]
+    },
+    {
+        "date": "2022-10-27",
+        "title": "Regulation (EU) 2022/2065 (Digital Services Act)",
+        "jurisdiction": "EU",
+        "source": "EUR-Lex",
+        "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32022R2065",
+        "topics": ["Platform", "Transparency"],
+        "keywords": ["dsa", "digital services", "platform", "transparency", "online platforms"]
+    },
+    {
+        "date": "2019-05-17",
+        "title": "Directive (EU) 2019/790 on copyright and related rights in the Digital Single Market",
+        "jurisdiction": "EU",
+        "source": "EUR-Lex",
+        "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32019L0790",
+        "topics": ["TDM", "Copyright"],
+        "keywords": ["copyright", "tdm", "text and data mining", "data mining", "training data"]
+    },
+    {
+        "date": "2018-12-21",
+        "title": "Regulation (EU) 2018/1807 on the free flow of non-personal data",
+        "jurisdiction": "EU",
+        "source": "EUR-Lex",
+        "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32018R1807",
+        "topics": ["Data", "Platform"],
+        "keywords": ["non-personal data", "data", "free flow", "data economy"]
+    },
+    {
+        "date": "2017-07-17",
+        "title": "Produkthaftungsgesetz (ProdHaftG)",
+        "jurisdiction": "Germany",
+        "source": "Gesetze im Internet",
+        "url": "https://www.gesetze-im-internet.de/prodhaftg/",
+        "topics": ["Liability"],
+        "keywords": ["product liability", "liability", "prodhaftg", "ai liability", "safety"]
+    },
+    {
+        "date": "2016-05-04",
+        "title": "Regulation (EU) 2016/679 (General Data Protection Regulation)",
+        "jurisdiction": "EU",
+        "source": "EUR-Lex",
+        "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32016R0679",
+        "topics": ["GDPR", "ADM", "Privacy"],
+        "keywords": ["gdpr", "data protection", "privacy", "automated decision", "profiling", "article 22"]
+    }
+]
+
 @st.cache_data(ttl=3600)
 def load_legal_references():
     """
@@ -22,9 +133,10 @@ def load_legal_references():
     """
     reference_path = Path(__file__).with_name("legal_references.json")
     try:
-        return json.loads(reference_path.read_text(encoding="utf-8"))
+        references = json.loads(reference_path.read_text(encoding="utf-8"))
+        return references or DEFAULT_LEGAL_REFERENCES
     except (OSError, json.JSONDecodeError):
-        return []
+        return DEFAULT_LEGAL_REFERENCES
 
 def fetch_legal_references(limit=50, start_date="2016-01-01"):
     references = load_legal_references()
