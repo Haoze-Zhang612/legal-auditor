@@ -172,8 +172,9 @@ ui_texts = {
         "sidebar_title": "## 🇪🇺🇩🇪 Regulatory Reference Feed",
         "view_link": "View Official Text",
         "fetch_settings": "**Fetch Settings**",
-        "search_placeholder": "Enter keyword (e.g., Copyright, BDSG, TDM)",
-        "english_hint": "💡 *Tip: English or German legal keywords both work.*",
+        "keyword_label": "Keyword",
+        "ref_search_btn": "Search references",
+        "english_hint": "💡 *Select filters, then run the reference search.*",
         "tracking": "📍 Currently Tracking: ",
         "results_found": "Found {} verified reference documents",
         "monitoring": "⏳ No matching verified reference in local baseline.",
@@ -210,8 +211,9 @@ ui_texts = {
         "sidebar_title": "## 🇪🇺🇩🇪 欧盟/德国法规参考源",
         "view_link": "查看官方文本",
         "fetch_settings": "**检索设置 / Fetch Settings**",
-        "search_placeholder": "🔍 输入关键词 (例: Copyright, BDSG, TDM)",
-        "english_hint": "💡 *提示: 英文或德文法律关键词都可以。*",
+        "keyword_label": "关键词",
+        "ref_search_btn": "检索参考文件",
+        "english_hint": "💡 *选择筛选条件后，点击按钮检索参考文件。*",
         "tracking": "📍 当前追踪: ",
         "results_found": "共发现 {} 份已核验参考文件",
         "monitoring": "⏳ 本地核验基线中暂无匹配文件。",
@@ -248,8 +250,9 @@ ui_texts = {
         "sidebar_title": "## 🇪🇺🇩🇪 Regulierungsreferenzen",
         "view_link": "Amtlichen Text anzeigen",
         "fetch_settings": "**Abrufeinstellungen**",
-        "search_placeholder": "🔍 Suchbegriff (z.B. Copyright, BDSG, TDM)",
-        "english_hint": "💡 *Hinweis: Englische und deutsche Rechtsbegriffe funktionieren.*",
+        "keyword_label": "Suchbegriff",
+        "ref_search_btn": "Referenzen suchen",
+        "english_hint": "💡 *Filter auswählen und dann die Referenzsuche starten.*",
         "tracking": "📍 Aktuelles Thema: ",
         "results_found": "{} geprüfte Referenzdokumente gefunden",
         "monitoring": "⏳ Keine passende geprüfte Referenz in der lokalen Basis.",
@@ -691,25 +694,65 @@ with st.sidebar:
     
     # 检索设置区域
     st.markdown(t["fetch_settings"])
-    ref_col1, ref_col2 = st.columns(2)
-    with ref_col1:
-        selected_jurisdiction = st.selectbox(
-            "Jurisdiction",
-            ["All", "EU", "Germany"],
-            label_visibility="collapsed"
+
+    if "reference_filters" not in st.session_state:
+        st.session_state["reference_filters"] = {
+            "jurisdiction": "All",
+            "topic": "All",
+            "keyword": None
+        }
+
+    keyword_options = {
+        "All": None,
+        "AI Act": "ai act",
+        "TDM": "tdm",
+        "GDPR": "gdpr",
+        "BDSG": "bdsg",
+        "UrhG §44b": "44b",
+        "Copyright": "copyright",
+        "ADM / Profiling": "profiling",
+        "Privacy": "privacy",
+        "DSA / DDG": "digital services",
+        "TDDDG / Cookies": "cookies",
+        "Liability": "liability"
+    }
+
+    with st.form("reference_search_form"):
+        ref_col1, ref_col2 = st.columns(2)
+        with ref_col1:
+            selected_jurisdiction = st.selectbox(
+                "Jurisdiction",
+                ["All", "EU", "Germany"],
+                index=["All", "EU", "Germany"].index(st.session_state["reference_filters"]["jurisdiction"])
+            )
+        with ref_col2:
+            topic_options = ["All", "AI", "TDM", "GDPR", "ADM", "Privacy", "Platform", "Copyright", "Liability", "Transparency"]
+            selected_topic = st.selectbox(
+                "Topic",
+                topic_options,
+                index=topic_options.index(st.session_state["reference_filters"]["topic"])
+            )
+
+        selected_keyword_label = st.selectbox(
+            t["keyword_label"],
+            list(keyword_options.keys()),
+            index=0
         )
-    with ref_col2:
-        selected_topic = st.selectbox(
-            "Topic",
-            ["All", "AI", "TDM", "GDPR", "ADM", "Privacy", "Platform", "Copyright", "Liability", "Transparency"],
-            label_visibility="collapsed"
-        )
-    user_kw = st.text_input("Search Input", placeholder=t["search_placeholder"], label_visibility="collapsed")
-    # 💡 新增：在这里提示用户必须使用英文检索
+        search_submitted = st.form_submit_button(t["ref_search_btn"], use_container_width=True)
+
+    if search_submitted:
+        st.session_state["reference_filters"] = {
+            "jurisdiction": selected_jurisdiction,
+            "topic": selected_topic,
+            "keyword": keyword_options[selected_keyword_label]
+        }
+
     st.caption(t["english_hint"]) 
     
-    # 不输入关键词时显示完整参考库；输入关键词时才过滤。
-    final_kw = user_kw.strip() if user_kw else None
+    active_filters = st.session_state["reference_filters"]
+    final_kw = active_filters["keyword"]
+    selected_jurisdiction = active_filters["jurisdiction"]
+    selected_topic = active_filters["topic"]
     
     if final_kw:
         st.info(f"{t['tracking']} **{final_kw}**")
