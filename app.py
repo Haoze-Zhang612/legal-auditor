@@ -12,7 +12,18 @@ import json
 from pathlib import Path
 
 # ================= 1. 页面与学术状态配置 =================
-st.set_page_config(page_title="TDM & GDPR Compliance Auditor", page_icon="⚖️", layout="wide")
+st.set_page_config(page_title="TDM & GDPR Compliance Auditor", page_icon=":material/gavel:", layout="wide")
+
+def icon_img(name, size=28):
+    icons = {
+        "scale": """<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><rect width='48' height='48' rx='10' fill='#1f77b4'/><path d='M24 10v27M14 16h20M18 16l-7 12h14l-7-12Zm12 0-7 12h14l-7-12ZM16 37h16' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>""",
+        "library": """<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><rect width='48' height='48' rx='10' fill='#2f6f4e'/><path d='M12 16h24M14 20v16M22 20v16M30 20v16M10 38h28M24 8l15 8H9l15-8Z' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>""",
+        "report": """<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><rect width='48' height='48' rx='10' fill='#6c5ce7'/><path d='M15 10h14l6 6v22H15V10Z' fill='none' stroke='white' stroke-width='3' stroke-linejoin='round'/><path d='M29 10v7h6M20 24h10M20 30h8' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>""",
+        "data": """<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><rect width='48' height='48' rx='10' fill='#b85c38'/><ellipse cx='24' cy='14' rx='12' ry='5' fill='none' stroke='white' stroke-width='3'/><path d='M12 14v18c0 3 5 6 12 6s12-3 12-6V14M12 23c0 3 5 6 12 6s12-3 12-6' fill='none' stroke='white' stroke-width='3'/></svg>"""
+    }
+    svg = icons.get(name, icons["scale"])
+    encoded = base64.b64encode(svg.encode("utf-8")).decode("ascii")
+    return f"<img src=\"data:image/svg+xml;base64,{encoded}\" width=\"{size}\" height=\"{size}\" style=\"vertical-align:-6px;margin-right:10px;border-radius:8px;\"/>"
 
 DEFAULT_LEGAL_REFERENCES = [
     {
@@ -226,12 +237,12 @@ def set_page_bg_and_hide_elements(image_file):
         """
         st.markdown(css, unsafe_allow_html=True)
     except FileNotFoundError:
-        st.error(f"🚨 严重错误：找不到背景图片")
+        st.error("Background image not found.")
 
 # 调用渲染
 set_page_bg_and_hide_elements("bg.jpg")
 
-# ================= 🚨 系统状态初始化 🚨 =================
+# ================= 系统状态初始化 =================
 if 'scan_result' not in st.session_state:
     st.session_state['scan_result'] = None
 if 'history' not in st.session_state:
@@ -242,100 +253,106 @@ if 'ai_memo' not in st.session_state:
 # ================= 2. 国际化与专注法域词库 (增加侧边栏所需字段) =================
 ui_texts = {
     "English": {
-        "title": "⚖️ Legal Tech Auditor",
+        "title": "Legal Tech Auditor",
         "framework_notice": "Jurisdiction: Germany (EU Acquis Applicable)",
         "input_label": "Enter Target URL",
-        "btn_scan": "Run Compliance Audit",
-        "history_label": "📜 Recent Audits",
-        "ai_header": "🤖 Doctrinal AI Analysis",
+        "btn_scan": "Run Compliance Check",
+        "history_label": "Recent Audits",
+        "ai_header": "Doctrinal AI Analysis",
         "ai_btn": "Generate Doctrinal Memo",
         "key_placeholder": "Paste API Key...",
-        "disclaimer": "⚠️ Academic Prototype for EU/DE Law Research, not Legal Advice.",
-        "score_title": "🎯 Overall Compliance Score",
-        "report_title": "📑 Empirical Audit Results",
+        "disclaimer": "Academic Prototype for EU/DE Law Research, not Legal Advice.",
+        "score_title": "Overall Compliance Score",
+        "report_title": "Empirical Audit Results",
         "tdm_layer": "1. Text & Data Mining (TDM) Reservation",
         "adm_layer": "2. Automated Decision-Making (ADM)",
         "gdpr_layer": "3. Transparency & Privacy (GDPR)",
-        "tdm_success": "✅ AI Crawlers Blocked: ",
-        "tdm_grey": "⚠️ Grey Area: General bot blocking found, but lacks specific AI directives.",
-        "tdm_fail": "❌ No Machine-Readable Reservation Found.",
-        "adm_success": "✅ Profiling/ADM keywords detected in policy.",
-        "adm_fail": "⚠️ No clear Automated Decision-Making (ADM) declarations found.",
-        "policy_success": "✅ Policy Documented: ",
-        "policy_fail": "🚨 Critical Transparency Failure (No Privacy Policy Found).",
+        "tdm_success": "AI crawlers blocked: ",
+        "tdm_grey": "Grey area: general bot blocking found, but lacks specific AI directives.",
+        "tdm_fail": "No machine-readable reservation found.",
+        "adm_success": "Profiling/ADM keywords detected in policy.",
+        "adm_fail": "No clear Automated Decision-Making (ADM) declarations found.",
+        "policy_success": "Policy documented: ",
+        "policy_fail": "Critical transparency gap: no privacy policy found.",
         "ai_analysis_title": " Analysis Results",
         "ai_tag_status": "Current Doctrinal Status",
         "ai_tag_risk": "Compliance Friction",
         "ai_tag_suggest": "Strategic Mitigation",
-        "sidebar_title": "## 🇪🇺🇩🇪 Regulatory Reference Feed",
+        "sidebar_title": "Regulatory Reference Feed",
         "view_link": "View Official Text",
         "results_found": "Found {} verified reference documents",
-        "monitoring": "⏳ No matching verified reference in local baseline.",
-        "verified": "Verified by: **Compliance Audit Agent**"
+        "monitoring": "No matching verified reference in local baseline.",
+        "verified": "Verified by: **Compliance Audit Agent**",
+        "topics_label": "Topics",
+        "structured_data": "View Structured Data (JSON)"
     },
     "中文": {
-        "title": "⚖️ 自动化审计系统",
+        "title": "自动化合规检测系统",
         "framework_notice": "适用法域：德国（适用欧盟既有规则）",
         "input_label": "输入目标网址",
-        "btn_scan": "开始法理审计",
-        "history_label": "📜 最近扫描记录",
-        "ai_header": "🤖 AI 法理分析",
+        "btn_scan": "开始合规检测",
+        "history_label": "最近扫描记录",
+        "ai_header": "AI 法理分析",
         "ai_btn": "生成法理备忘录",
         "key_placeholder": "粘贴 API Key...",
-        "disclaimer": "⚠️ 针对欧盟/德国法的学术研究原型，不构成正式法律建议！",
-        "score_title": "🎯 综合合规得分",
-        "report_title": "📑 深度审计报告",
+        "disclaimer": "针对欧盟/德国法的学术研究原型，不构成正式法律建议。",
+        "score_title": "综合合规得分",
+        "report_title": "深度审计报告",
         "tdm_layer": "1. TDM 权利保留 (§ 44b UrhG)",
         "adm_layer": "2. 自动化决策 (ADM)",
         "gdpr_layer": "3. 透明度与隐私 (GDPR)",
-        "tdm_success": "✅ 已明确拦截 AI 爬虫: ",
-        "tdm_grey": "⚠️ 灰色地带：发现通用爬虫拦截，但缺乏针对 AI 的明确指令。",
-        "tdm_fail": "❌ 未发现机器可读的 TDM 权利保留声明。",
-        "adm_success": "✅ 在政策中检测到用户画像/自动化决策 (ADM) 声明。",
-        "adm_fail": "⚠️ 未发现明确的自动化决策 (ADM) 透明度声明。",
-        "policy_success": "✅ 已定位隐私政策链接: ",
-        "policy_fail": "🚨 严重风险: 未发现隐私政策链接。",
+        "tdm_success": "已明确拦截 AI 爬虫: ",
+        "tdm_grey": "灰色地带：发现通用爬虫拦截，但缺乏针对 AI 的明确指令。",
+        "tdm_fail": "未发现机器可读的 TDM 权利保留声明。",
+        "adm_success": "在政策中检测到用户画像/自动化决策 (ADM) 声明。",
+        "adm_fail": "未发现明确的自动化决策 (ADM) 透明度声明。",
+        "policy_success": "已定位隐私政策链接: ",
+        "policy_fail": "透明度风险：未发现隐私政策链接。",
         "ai_analysis_title": " 分析结果",
         "ai_tag_status": "合规现状",
         "ai_tag_risk": "核心法理摩擦",
         "ai_tag_suggest": "合规改进建议",
-        "sidebar_title": "## 🇪🇺🇩🇪 欧盟/德国法规参考源",
+        "sidebar_title": "欧盟/德国法规参考源",
         "view_link": "查看官方文本",
         "results_found": "共发现 {} 份已核验参考文件",
-        "monitoring": "⏳ 本地核验基线中暂无匹配文件。",
-        "verified": "认证系统: **合规审计 Agent**"
+        "monitoring": "本地核验基线中暂无匹配文件。",
+        "verified": "认证系统: **合规审计 Agent**",
+        "topics_label": "主题",
+        "structured_data": "查看结构化数据 (JSON)"
     },
     "Deutsch": {
-        "title": "⚖️ Legal-Tech-Auditor",
+        "title": "Legal-Tech-Auditor",
         "framework_notice": "Rechtsrahmen: Deutschland (unter Anwendung des EU-Acquis)",
         "input_label": "Ziel-URL eingeben",
-        "btn_scan": "Rechtsprüfung starten",
-        "history_label": "📜 Letzte Prüfungen",
-        "ai_header": "🤖 Doktrinäre KI-Analyse",
+        "btn_scan": "Compliance-Prüfung starten",
+        "history_label": "Letzte Prüfungen",
+        "ai_header": "Doktrinäre KI-Analyse",
         "ai_btn": "Doktrinäres Memo generieren",
         "key_placeholder": "API-Key einfügen...",
-        "disclaimer": "⚠️ Akademischer Prototyp für die EU/DE-Rechtsforschung, keine Rechtsberatung.",
-        "score_title": "🎯 Gesamt-Compliance-Score",
-        "report_title": "📑 Empirische Prüfergebnisse",
+        "disclaimer": "Akademischer Prototyp für die EU/DE-Rechtsforschung, keine Rechtsberatung.",
+        "score_title": "Gesamt-Compliance-Score",
+        "report_title": "Empirische Prüfergebnisse",
         "tdm_layer": "1. TDM-Nutzungsvorbehalt (§ 44b UrhG)",
         "adm_layer": "2. Automatisierte Entscheidungsfindung (ADM)",
         "gdpr_layer": "3. Transparenz & Datenschutz (DSGVO)",
-        "tdm_success": "✅ KI-Crawler blockiert: ",
-        "tdm_grey": "⚠️ Grauzone: Allgemeine Bot-Blockierung gefunden, aber keine spezifischen KI-Anweisungen.",
-        "tdm_fail": "❌ Kein maschinenlesbarer Nutzungsvorbehalt gefunden.",
-        "adm_success": "✅ Profiling/ADM-Begriffe in der Richtlinie erkannt.",
-        "adm_fail": "⚠️ Keine klaren Erklärungen zur Automatisierten Entscheidungsfindung (ADM) gefunden.",
-        "policy_success": "✅ Datenschutzerklärung gefunden: ",
-        "policy_fail": "🚨 KRITISCH: Keine Datenschutzerklärung gefunden.",
+        "tdm_success": "KI-Crawler blockiert: ",
+        "tdm_grey": "Grauzone: Allgemeine Bot-Blockierung gefunden, aber keine spezifischen KI-Anweisungen.",
+        "tdm_fail": "Kein maschinenlesbarer Nutzungsvorbehalt gefunden.",
+        "adm_success": "Profiling/ADM-Begriffe in der Richtlinie erkannt.",
+        "adm_fail": "Keine klaren Erklärungen zur Automatisierten Entscheidungsfindung (ADM) gefunden.",
+        "policy_success": "Datenschutzerklärung gefunden: ",
+        "policy_fail": "Transparenzrisiko: Keine Datenschutzerklärung gefunden.",
         "ai_analysis_title": " Analyseergebnis",
         "ai_tag_status": "Doktrinärer Status",
         "ai_tag_risk": "Compliance-Friktion",
         "ai_tag_suggest": "Strategische Minderung",
-        "sidebar_title": "## 🇪🇺🇩🇪 Regulierungsreferenzen",
+        "sidebar_title": "Regulierungsreferenzen",
         "view_link": "Amtlichen Text anzeigen",
         "results_found": "{} geprüfte Referenzdokumente gefunden",
-        "monitoring": "⏳ Keine passende geprüfte Referenz in der lokalen Basis.",
-        "verified": "Verifiziert durch: **Compliance Audit Agent**"
+        "monitoring": "Keine passende geprüfte Referenz in der lokalen Basis.",
+        "verified": "Verifiziert durch: **Compliance Audit Agent**",
+        "topics_label": "Themen",
+        "structured_data": "Strukturierte Daten anzeigen (JSON)"
     }
 }
 # ================= 3. 高级审计逻辑 (无删减版) =================
@@ -767,7 +784,10 @@ t = ui_texts[lang]
 
 # --- 【新插入：侧边栏联动逻辑】 ---
 with st.sidebar:
-    st.markdown(t["sidebar_title"])
+    st.markdown(
+        f"<h2 style='display:flex;align-items:center;margin:0 0 0.5rem 0;'>{icon_img('library', 26)}{t['sidebar_title']}</h2>",
+        unsafe_allow_html=True
+    )
     st.divider()
 
     updates = fetch_legal_references(limit=50, start_date="2016-01-01")
@@ -780,11 +800,11 @@ with st.sidebar:
         with st.container(height=500, border=False): 
             for item in updates:
                 with st.container(border=True):
-                    st.caption(f"📅 {item['date']['value']} | {item['jurisdiction']['value']} | {item['source']['value']}") 
+                    st.caption(f"{item['date']['value']} | {item['jurisdiction']['value']} | {item['source']['value']}") 
                     st.markdown(f"<p style='font-size:14px; font-weight:bold;'>{item['title']['value']}</p>", unsafe_allow_html=True)
                     if item["topics"]["value"]:
-                        st.caption("Topics: " + ", ".join(item["topics"]["value"]))
-                    st.markdown(f"[🔗 {t['view_link']}]({item['url']['value']})")
+                        st.caption(f"{t['topics_label']}: " + ", ".join(item["topics"]["value"]))
+                    st.markdown(f"[{t['view_link']}]({item['url']['value']})")
     else:
         st.info(t["monitoring"])
         
@@ -794,7 +814,10 @@ with st.sidebar:
 st.markdown("<br><br>", unsafe_allow_html=True)
 _, mid, _ = st.columns([1, 4, 1])
 with mid:
-    st.markdown(f"<h1 style='text-align:center;'>{t['title']}</h1>", unsafe_allow_html=True)
+    st.markdown(
+        f"<h1 style='text-align:center;'>{icon_img('scale', 42)}{t['title']}</h1>",
+        unsafe_allow_html=True
+    )
     st.markdown(f"<p style='text-align:center; color:#888888; font-size:1.1em; margin-top:-10px; margin-bottom:30px;'>{t['framework_notice']}</p>", unsafe_allow_html=True)
     
     url_input = st.text_input(t["input_label"], placeholder="https://...", key="persist_url", label_visibility="collapsed")
@@ -812,7 +835,7 @@ with mid:
         cols = st.columns(min(len(st.session_state['history']), 4))
         for i, item in enumerate(st.session_state['history'][:4]):
             with cols[i]:
-                st.button(f"📊 {item['score']}pts\n{urlparse(item['url']).netloc}", key=f"hist_{i}", use_container_width=True)
+                st.button(f"{item['score']} pts\n{urlparse(item['url']).netloc}", key=f"hist_{i}", use_container_width=True)
 
 # ================= 5. 深度审计结果面板 (原封不动) =================
 if st.session_state['scan_result']:
@@ -862,7 +885,7 @@ if st.session_state['scan_result']:
             else:
                 st.error(f"{t['policy_fail']}")
 
-        with st.expander("💾 View Structured Data (JSON)", expanded=False):
+        with st.expander(t["structured_data"], expanded=False):
             st.json({k: v for k, v in r.items() if k != 'text'})
 
     with res_r:
