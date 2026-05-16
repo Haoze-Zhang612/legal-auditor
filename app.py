@@ -26,25 +26,11 @@ def load_legal_references():
     except (OSError, json.JSONDecodeError):
         return []
 
-def fetch_legal_references(keywords=None, jurisdiction="All", topic="All", limit=30, start_date="2016-01-01"):
+def fetch_legal_references(limit=50, start_date="2016-01-01"):
     references = load_legal_references()
-    query = (keywords or "").strip().lower()
     results = []
     for item in references:
         if item["date"] < start_date:
-            continue
-        if jurisdiction != "All" and item["jurisdiction"] != jurisdiction:
-            continue
-        if topic != "All" and topic not in item.get("topics", []):
-            continue
-        haystack = " ".join([
-            item["title"],
-            item["jurisdiction"],
-            item["source"],
-            *item.get("topics", []),
-            *item.get("keywords", [])
-        ]).lower()
-        if query and query not in haystack:
             continue
         results.append({
             "date": {"value": item["date"]},
@@ -55,7 +41,7 @@ def fetch_legal_references(keywords=None, jurisdiction="All", topic="All", limit
             "topics": {"value": item.get("topics", [])}
         })
 
-    results.sort(key=lambda x: (x["jurisdiction"]["value"], x["date"]["value"]), reverse=True)
+    results.sort(key=lambda x: x["date"]["value"], reverse=True)
     return results[:limit]
 # 将原有的隐藏 CSS 和 新的背景图 CSS 合并成一个函数
 def set_page_bg_and_hide_elements(image_file):
@@ -171,16 +157,9 @@ ui_texts = {
         "ai_tag_suggest": "Strategic Mitigation",
         "sidebar_title": "## 🇪🇺🇩🇪 Regulatory Reference Feed",
         "view_link": "View Official Text",
-        "fetch_settings": "**Fetch Settings**",
-        "keyword_label": "Keyword",
-        "ref_search_btn": "Search references",
-        "english_hint": "💡 *Select filters, then run the reference search.*",
-        "tracking": "📍 Currently Tracking: ",
         "results_found": "Found {} verified reference documents",
         "monitoring": "⏳ No matching verified reference in local baseline.",
-        "verified": "Verified by: **Compliance Audit Agent**",
-        "topic_ai": "AI Act",
-        "topic_data": "Data Protection"
+        "verified": "Verified by: **Compliance Audit Agent**"
     },
     "中文": {
         "title": "⚖️ 自动化审计系统",
@@ -210,16 +189,9 @@ ui_texts = {
         "ai_tag_suggest": "合规改进建议",
         "sidebar_title": "## 🇪🇺🇩🇪 欧盟/德国法规参考源",
         "view_link": "查看官方文本",
-        "fetch_settings": "**检索设置 / Fetch Settings**",
-        "keyword_label": "关键词",
-        "ref_search_btn": "检索参考文件",
-        "english_hint": "💡 *选择筛选条件后，点击按钮检索参考文件。*",
-        "tracking": "📍 当前追踪: ",
         "results_found": "共发现 {} 份已核验参考文件",
         "monitoring": "⏳ 本地核验基线中暂无匹配文件。",
-        "verified": "认证系统: **合规审计 Agent**",
-        "topic_ai": "AI Act",
-        "topic_data": "Data Protection"
+        "verified": "认证系统: **合规审计 Agent**"
     },
     "Deutsch": {
         "title": "⚖️ Legal-Tech-Auditor",
@@ -249,16 +221,9 @@ ui_texts = {
         "ai_tag_suggest": "Strategische Minderung",
         "sidebar_title": "## 🇪🇺🇩🇪 Regulierungsreferenzen",
         "view_link": "Amtlichen Text anzeigen",
-        "fetch_settings": "**Abrufeinstellungen**",
-        "keyword_label": "Suchbegriff",
-        "ref_search_btn": "Referenzen suchen",
-        "english_hint": "💡 *Filter auswählen und dann die Referenzsuche starten.*",
-        "tracking": "📍 Aktuelles Thema: ",
         "results_found": "{} geprüfte Referenzdokumente gefunden",
         "monitoring": "⏳ Keine passende geprüfte Referenz in der lokalen Basis.",
-        "verified": "Verifiziert durch: **Compliance Audit Agent**",
-        "topic_ai": "AI Act",
-        "topic_data": "Data Protection"
+        "verified": "Verifiziert durch: **Compliance Audit Agent**"
     }
 }
 # ================= 3. 高级审计逻辑 (无删减版) =================
@@ -691,82 +656,9 @@ t = ui_texts[lang]
 # --- 【新插入：侧边栏联动逻辑】 ---
 with st.sidebar:
     st.markdown(t["sidebar_title"])
-    
-    # 检索设置区域
-    st.markdown(t["fetch_settings"])
-
-    if "reference_filters" not in st.session_state:
-        st.session_state["reference_filters"] = {
-            "jurisdiction": "All",
-            "topic": "All",
-            "keyword": None
-        }
-
-    keyword_options = {
-        "All": None,
-        "AI Act": "ai act",
-        "TDM": "tdm",
-        "GDPR": "gdpr",
-        "BDSG": "bdsg",
-        "UrhG §44b": "44b",
-        "Copyright": "copyright",
-        "ADM / Profiling": "profiling",
-        "Privacy": "privacy",
-        "DSA / DDG": "digital services",
-        "TDDDG / Cookies": "cookies",
-        "Liability": "liability"
-    }
-
-    with st.form("reference_search_form"):
-        ref_col1, ref_col2 = st.columns(2)
-        with ref_col1:
-            selected_jurisdiction = st.selectbox(
-                "Jurisdiction",
-                ["All", "EU", "Germany"],
-                index=["All", "EU", "Germany"].index(st.session_state["reference_filters"]["jurisdiction"])
-            )
-        with ref_col2:
-            topic_options = ["All", "AI", "TDM", "GDPR", "ADM", "Privacy", "Platform", "Copyright", "Liability", "Transparency"]
-            selected_topic = st.selectbox(
-                "Topic",
-                topic_options,
-                index=topic_options.index(st.session_state["reference_filters"]["topic"])
-            )
-
-        selected_keyword_label = st.selectbox(
-            t["keyword_label"],
-            list(keyword_options.keys()),
-            index=0
-        )
-        search_submitted = st.form_submit_button(t["ref_search_btn"], use_container_width=True)
-
-    if search_submitted:
-        st.session_state["reference_filters"] = {
-            "jurisdiction": selected_jurisdiction,
-            "topic": selected_topic,
-            "keyword": keyword_options[selected_keyword_label]
-        }
-
-    st.caption(t["english_hint"]) 
-    
-    active_filters = st.session_state["reference_filters"]
-    final_kw = active_filters["keyword"]
-    selected_jurisdiction = active_filters["jurisdiction"]
-    selected_topic = active_filters["topic"]
-    
-    if final_kw:
-        st.info(f"{t['tracking']} **{final_kw}**")
-    
     st.divider()
 
-    # 执行抓取
-    updates = fetch_legal_references(
-        keywords=final_kw,
-        jurisdiction=selected_jurisdiction,
-        topic=selected_topic,
-        limit=30,
-        start_date="2016-01-01"
-    )
+    updates = fetch_legal_references(limit=50, start_date="2016-01-01")
     
     # 渲染结果卡片
     if updates:
